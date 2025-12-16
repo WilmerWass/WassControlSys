@@ -1,5 +1,5 @@
 using System.Threading.Tasks;
-using System.Windows; // For MessageBox
+using System.Windows; // Para MessageBox
 
 namespace WassControlSys.Core
 {

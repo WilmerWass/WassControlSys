@@ -11,5 +11,10 @@ namespace WassControlSys.Core
         ProcessLaunchResult LaunchSystemFileChecker();
         ProcessLaunchResult LaunchDISMHealthRestore();
         ProcessLaunchResult LaunchCHKDSK();
+        ProcessLaunchResult FlushDns();
+        ProcessLaunchResult AnalyzeDisk();
+        ProcessLaunchResult CleanPrefetch();
+        ProcessLaunchResult RebuildSearchIndex();
+        ProcessLaunchResult ResetNetwork();
     }
 }

@@ -21,22 +21,22 @@ namespace WassControlSys.Core
         [Flags]
         enum RecycleFlags : int
         {
-            SHERB_NOCONFIRMATION = 0x00000001,  // Don't ask for confirmation
-            SHERB_NOPROGRESSUI = 0x00000002,    // Don't display a progress box
-            SHERB_NOSOUND = 0x00000004          // Don't play recycle sound
+            SHERB_NOCONFIRMATION = 0x00000001,  // No pedir confirmación
+            SHERB_NOPROGRESSUI = 0x00000002,    // No mostrar cuadro de progreso
+            SHERB_NOSOUND = 0x00000004          // No reproducir sonido de papelera de reciclaje
         }
 
         private static readonly string[] TempDirectories = new[]
         {
-            Environment.GetFolderPath(Environment.SpecialFolder.InternetCache), // legacy IE cache
+            Environment.GetFolderPath(Environment.SpecialFolder.InternetCache), // caché de IE obsoleto
             Path.GetTempPath(),
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Temp"),
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Temp"),
-            // Browser caches
+            // Cachés de navegador
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Google\\Chrome\\User Data\\Default\\Cache"),
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Mozilla\\Firefox\\Profiles"), // Needs deeper search
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Mozilla\\Firefox\\Profiles"), // Necesita una búsqueda más profunda
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Microsoft\\Edge\\User Data\\Default\\Cache"),
-            // Windows Update temp files
+            // Archivos temporales de Windows Update
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "SoftwareDistribution\\Download"),
         };
 
@@ -52,7 +52,7 @@ namespace WassControlSys.Core
             var result = new CleanResult();
             var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-            // Conditional cleaning based on options
+            // Limpieza condicional basada en opciones
             if (options.CleanSystemTemp)
             {
                 foreach (var baseDir in TempDirectories)
@@ -66,11 +66,11 @@ namespace WassControlSys.Core
                     }
                     catch
                     {
-                        // ignore per directory errors to continue
+                        // ignorar errores por directorio para continuar
                     }
                 }
 
-                // Also try per-user recent temp dirs under users profiles
+                // También intentar directorios temporales recientes por usuario bajo perfiles de usuario
                 var usersDir = Path.Combine(Path.GetPathRoot(Environment.SystemDirectory)!, "Users");
                 if (Directory.Exists(usersDir))
                 {
@@ -93,10 +93,10 @@ namespace WassControlSys.Core
                 result = Aggregate(result, CleanRecycleBin()); // Clean Recycle Bin
             }
 
-            // For browser cache, we need to be more specific. Current TempDirectories include some,
-            // but a more thorough cleaning would involve more targeted paths and potentially stopping browsers.
-            // For now, assume general temp directory cleaning covers some browser cache.
-            // A dedicated browser cache cleaning method could be added later.
+            // Para la caché del navegador, necesitamos ser más específicos. Los directorios temporales actuales incluyen algunos,
+            // pero una limpieza más exhaustiva implicaría rutas más específicas y, potencialmente, detener los navegadores.
+            // Por ahora, asumimos que la limpieza general de directorios temporales cubre parte de la caché del navegador.
+            // Un método dedicado a la limpieza de la caché del navegador podría añadirse más tarde.
             return result;
         }
 
@@ -107,13 +107,13 @@ namespace WassControlSys.Core
             {
                 SHEmptyRecycleBin(IntPtr.Zero, null, RecycleFlags.SHERB_NOCONFIRMATION | RecycleFlags.SHERB_NOPROGRESSUI | RecycleFlags.SHERB_NOSOUND);
                 result.Notes += "Papelera de reciclaje vaciada.";
-                // We cannot easily get bytes freed for recycle bin, so we'll just report success.
+                // No podemos obtener fácilmente los bytes liberados para la papelera de reciclaje, así que solo informaremos del éxito.
             }
             catch (Exception ex)
             {
-                // Log and continue, do not fail entire cleaning
-                // _log?.Error($"Error cleaning Recycle Bin: {ex.Message}");
-                result.FilesFailed++; // Indicate an issue
+                // Registrar y continuar, no fallar toda la limpieza
+                // _log?.Error($"Error limpiando Papelera de Reciclaje: {ex.Message}");
+                result.FilesFailed++;// Indicar un problema
                 result.Notes += $"Error al vaciar papelera: {ex.Message}";
             }
             return result;
@@ -128,9 +128,9 @@ namespace WassControlSys.Core
         {
             try 
             {
-                // We will just execute the optimization.
+                // Simplemente ejecutaremos la optimización.
                 
-                // We will just execute the optimization.
+                // Simplemente ejecutaremos la optimización.
                 var processes = Process.GetProcesses();
                 foreach (var p in processes)
                 {
@@ -141,11 +141,11 @@ namespace WassControlSys.Core
                             EmptyWorkingSet(p.Handle);
                         }
                     } 
-                    catch { } // Ignore access denied etc
+                    catch { } // Ignorar acceso denegado, etc.
                 }
 
-                // As a placeholder for bytes freed, we can't easily calculate it without checking before/after global mem.
-                // We'll return 0 bytes but set a success message.
+                // Como marcador de posición para los bytes liberados, no podemos calcularlos fácilmente sin verificar la memoria global antes y después.
+                // Devolveremos 0 bytes pero estableceremos un mensaje de éxito.
                 return new CleanResult { BytesFreed = 0, Notes = "Procesos optimizados." };
             }
             catch (Exception ex)
@@ -192,7 +192,7 @@ namespace WassControlSys.Core
                     }
                 }
 
-                // Remove empty directories
+                // Eliminar directorios vacíos
                 foreach (var sub in SafeEnumerateDirectories(dir, "*", SearchOption.AllDirectories).OrderByDescending(d => d.Length))
                 {
                     try
@@ -211,7 +211,7 @@ namespace WassControlSys.Core
             }
             catch
             {
-                // non-fatal
+                // no fatal
             }
 
             return result;
@@ -256,6 +256,71 @@ namespace WassControlSys.Core
             }
         }
 
+        public ProcessLaunchResult FlushDns()
+        {
+            return LaunchElevated("cmd.exe", "/c ipconfig /flushdns");
+        }
+
+        public ProcessLaunchResult AnalyzeDisk()
+        {
+            string sysDrive = Path.GetPathRoot(Environment.SystemDirectory)!;
+            // /A = Analizar, /V = Verbose
+            return LaunchElevated("cmd.exe", $"/c defrag {sysDrive.TrimEnd('\\')} /A /V");
+        }
+
+        public ProcessLaunchResult CleanPrefetch()
+        {
+            // Requiere Admin. Intentamos borrar archivos en C:\Windows\Prefetch
+            var result = new ProcessLaunchResult { Started = true };
+            try
+            {
+                string prefetchPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Prefetch");
+                if (Directory.Exists(prefetchPath))
+                {
+                    int deleted = 0;
+                    int failed = 0;
+                    foreach (var file in Directory.EnumerateFiles(prefetchPath))
+                    {
+                        try
+                        {
+                            File.Delete(file);
+                            deleted++;
+                        }
+                        catch
+                        {
+                            failed++;
+                        }
+                    }
+                    result.Message = $"Limpieza de Prefetch completada. {deleted} archivos borrados, {failed} omitidos (en uso o sin permisos).";
+                    result.ExitCode = 0;
+                }
+                else
+                {
+                    result.Message = "No se encontró el directorio Prefetch.";
+                    result.ExitCode = 1;
+                }
+            }
+            catch (Exception ex)
+            {
+                result.Started = false;
+                result.Message = $"Error al limpiar Prefetch: {ex.Message}";
+                result.StandardError = ex.ToString();
+            }
+            return result;
+        }
+
+        public ProcessLaunchResult RebuildSearchIndex()
+        {
+            // La forma segura es abrir el panel de control
+            return LaunchElevated("control.exe", "srchadmin.dll");
+        }
+
+        public ProcessLaunchResult ResetNetwork()
+        {
+            // Ejecutar una secuencia de comandos de red
+            return LaunchElevated("cmd.exe", "/c ipconfig /release && ipconfig /renew && ipconfig /flushdns && netsh int ip reset && netsh winsock reset");
+        }
+
         public bool IsAdministrator()
         {
             using var identity = WindowsIdentity.GetCurrent();
@@ -265,32 +330,32 @@ namespace WassControlSys.Core
 
         public ProcessLaunchResult LaunchSystemFileChecker()
         {
-            // sfc /scannow must be elevated; we open an elevated console if not admin
+            // sfc /scannow debe ejecutarse con privilegios elevados; abrimos una consola elevada si no somos administradores
             return LaunchElevated("cmd.exe", "/c sfc /scannow");
         }
 
         public ProcessLaunchResult LaunchDISMHealthRestore()
         {
-            // DISM restore health
+            // Restauración de salud de DISM
             return LaunchElevated("cmd.exe", "/c DISM /Online /Cleanup-Image /RestoreHealth");
         }
 
         public ProcessLaunchResult LaunchCHKDSK()
         {
-            // Schedule chkdsk on next boot for system drive
+            // Programar chkdsk en el próximo arranque para la unidad del sistema
             string sysDrive = Path.GetPathRoot(Environment.SystemDirectory)!;
             return LaunchElevated("cmd.exe", $"/c chkdsk {sysDrive.TrimEnd('\\')} /F /R");
         }
 
         private ProcessLaunchResult LaunchElevated(string fileName, string arguments)
         {
-            // Note: Redirecting streams requires UseShellExecute = false.
-            // This means 'Verb = "runas"' won't work directly to elevate.
-            // For commands requiring elevation with output capture, a different approach (e.g.,
-            // launching powershell with Start-Process -Verb RunAs and then capturing its output)
-            // or ensuring the main app is already elevated would be needed.
-            // For now, we capture output without automatic elevation via 'runas'.
-            // Commands like SFC/DISM will still require the user to launch the app as admin.
+            // Nota: La redirección de flujos requiere UseShellExecute = false.
+            // Esto significa que 'Verb = "runas"' no funcionará directamente para elevar.
+            // Para comandos que requieren elevación con captura de salida, se necesitaría un enfoque diferente (por ejemplo,
+            // lanzar powershell con Start-Process -Verb RunAs y luego capturar su salida)
+            // o asegurar que la aplicación principal ya esté elevada.
+            // Por ahora, capturamos la salida sin elevación automática a través de 'runas'.
+            // Comandos como SFC/DISM seguirán requiriendo que el usuario inicie la aplicación como administrador.
 
             Process p = null;
             string standardOutput = string.Empty;
@@ -306,7 +371,7 @@ namespace WassControlSys.Core
                     UseShellExecute = false, // Required to redirect streams
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
-                    CreateNoWindow = true, // Don't show a command window
+                    CreateNoWindow = true, // No mostrar ventana de comandos
                     WindowStyle = ProcessWindowStyle.Hidden
                 };
 

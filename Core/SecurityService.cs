@@ -38,47 +38,46 @@ namespace WassControlSys.Core
             bool enabled = false;
             try
             {
-                // WMI query to SecurityCenter2
+                // Consulta WMI a SecurityCenter2
                 using var searcher = new ManagementObjectSearcher(@"root\SecurityCenter2", "SELECT * FROM AntivirusProduct");
                 foreach (var result in searcher.Get())
                 {
                     name = result["displayName"]?.ToString() ?? "Desconocido";
                     
-                    // productState is a bitmask. 
-                    // Usually, if bit 12 (0x1000) is set, it's ON. 
-                    // Simply checking if it exists is a good first step, but let's try to parse status.
-                    // Note: This is a simplification.
+                    // productState es una máscara de bits. 
+                    // Normalmente, si el bit 12 (0x1000) está activado, está ENCENDIDO. 
+                    // Simplemente verificar si existe es un buen primer paso, pero intentemos analizar el estado.
+                    // Nota: Esto es una simplificación.
                     string hexState = "";
                     if (result["productState"] != null)
                     {
                         int state = Convert.ToInt32(result["productState"]);
-                        // Standard check for "On" (heuristic)
-                        // 0x1000 = On, 0x0000 = Off. 
-                        // But different vendors use different flags. 
-                        // We will assume if ANY AV is reported here, it is likely the active one.
-                        // A more robust check might be needed for specific vendors.
-                        enabled = true; 
+                        // Verificación estándar de "Activado" (heurística)
+                        // 0x1000 = Activado, 0x0000 = Desactivado. 
+                        // Pero diferentes proveedores usan diferentes banderas. 
+                                            // Asumiremos que si se reporta CUALQUIER AV aquí, es probable que sea el activo.
+                                            // Podría ser necesaria una verificación más robusta para proveedores específicos.                        enabled = true; 
                         hexState = state.ToString("X");
                     }
                     
-                    // Just take the first one found
+                    // Simplemente tomar el primero encontrado
                     break;
                 }
             }
             catch 
             {
-                // Fallback or permission issue
+                // Problema de respaldo o de permisos
             }
             return enabled;
         }
 
         private bool CheckFirewall()
         {
-            // Simple check via Registry or WMI. 
-            // Using WMI "root\StandardCimv2" -> MSFT_NetFirewallProfile is cleaner but requires newer Win versions.
-            // Let's stick to Registry for broader compatibility or assumptions.
-            // Check Domain, Public, Standard profiles in registry is complex.
-            // A simpler heuristic: Check if the service 'MpsSvc' (Windows Firewall) is running.
+            // Verificación simple a través del Registro o WMI. 
+            // Usar WMI "root\StandardCimv2" -> MSFT_NetFirewallProfile es más limpio pero requiere versiones más recientes de Windows.
+            // Nos ceñiremos al Registro para una compatibilidad o suposiciones más amplias.
+            // La verificación de perfiles de Dominio, Público, Estándar en el registro es compleja.
+            // Una heurística más simple: Verificar si el servicio 'MpsSvc' (Firewall de Windows) está en ejecución.
             try
             {
                  using var sc = new System.ServiceProcess.ServiceController("MpsSvc");

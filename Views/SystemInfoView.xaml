@@ -63,6 +63,33 @@
                     <TextBlock Text="Disco del Sistema:" Foreground="#888" FontSize="14" Grid.Column="0"/>
                     <TextBlock Text="{Binding SystemInformation.SystemDisk}" Foreground="White" FontSize="14" FontWeight="SemiBold" Grid.Column="1"/>
                 </Grid>
+
+                <Grid Margin="0,20,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="150"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="BIOS:" Foreground="#888" FontSize="14" Grid.Column="0"/>
+                    <TextBlock Text="{Binding SystemInformation.BiosVersion}" Foreground="White" FontSize="14" FontWeight="SemiBold" Grid.Column="1"/>
+                </Grid>
+
+                <Grid Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="150"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Red:" Foreground="#888" FontSize="14" Grid.Column="0"/>
+                    <TextBlock Text="{Binding SystemInformation.NetworkInfo}" Foreground="White" FontSize="14" FontWeight="SemiBold" Grid.Column="1" TextWrapping="Wrap"/>
+                </Grid>
+
+                <Grid Margin="0,0,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="150"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Tiempo Activo:" Foreground="#888" FontSize="14" Grid.Column="0"/>
+                    <TextBlock Text="{Binding SystemInformation.Uptime}" Foreground="White" FontSize="14" FontWeight="SemiBold" Grid.Column="1"/>
+                </Grid>
              </StackPanel>
         </Border>
     </StackPanel>

@@ -11,22 +11,22 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Header -->
+        <!-- Encabezado -->
         <StackPanel Grid.Row="0" Margin="0,0,0,30">
             <TextBlock Text="Dashboard" Style="{StaticResource HeaderTextStyle}"/>
             <TextBlock Text="{Binding WelcomeMessage}" Style="{StaticResource SubHeaderTextStyle}" Margin="0,5,0,0"/>
         </StackPanel>
 
-        <!-- Content Area -->
+        <!-- Área de Contenido -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             
-            <!-- Left Column: Quick Actions + Mode Selector -->
+            <!-- Columna Izquierda: Acciones Rápidas + Selector de Modo -->
             <StackPanel Grid.Column="0" Margin="0,0,15,0">
-                 <!-- Quick Actions Card -->
+                 <!-- Tarjeta de Acciones Rápidas -->
                 <Border Background="{StaticResource SurfaceBrush}" CornerRadius="12" Padding="20" Margin="0,0,0,15">
                     <StackPanel>
                         <TextBlock Text="Acciones Rápidas" FontSize="18" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,15"/>
@@ -35,7 +35,7 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Selector de Modo Card (Task 01) -->
+                <!-- Tarjeta de Selector de Modo -->
                 <Border Background="{StaticResource SurfaceBrush}" CornerRadius="12" Padding="20">
                     <StackPanel>
                         <TextBlock Text="Modo de Rendimiento" FontSize="18" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,15"/>
@@ -61,7 +61,7 @@
                 </Border>
             </StackPanel>
 
-            <!-- Right Column: System Monitor (Task 04) -->
+            <!-- Columna Derecha: Monitor del Sistema -->
             <Border Grid.Column="1" Background="{StaticResource SurfaceBrush}" CornerRadius="12" Padding="20" Margin="15,0,0,0" VerticalAlignment="Top">
                 <StackPanel>
                     <TextBlock Text="Monitor del Sistema" FontSize="18" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,15"/>

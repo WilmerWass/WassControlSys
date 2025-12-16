@@ -13,10 +13,10 @@
     <FileVersion>0.1.1.0</FileVersion>
     
     <!-- Application Information -->
-    <Company>WassControl</Company>
+    <Company>WilmerWass</Company>
     <Product>WassControlSys</Product>
     <Description>Sistema de Control y Optimización para Windows</Description>
-    <Copyright>Copyright © 2025 WassControl</Copyright>
+    <Copyright>Copyright © 2025 WilmerWass</Copyright>
     
     <!-- Build Configuration -->
     <PublishSingleFile>true</PublishSingleFile>

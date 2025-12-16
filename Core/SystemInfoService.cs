@@ -2,6 +2,7 @@ using System;
 using System.Management;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Net.NetworkInformation;
 
 namespace WassControlSys.Core
 {
@@ -13,6 +14,9 @@ namespace WassControlSys.Core
         public string TotalRam { get; set; } = "";
         public string Gpu { get; set; } = "";
         public string SystemDisk { get; set; } = "";
+        public string BiosVersion { get; set; } = "";
+        public string NetworkInfo { get; set; } = "";
+        public string Uptime { get; set; } = "";
     }
 
     public class SystemInfoService : ISystemInfoService
@@ -28,7 +32,10 @@ namespace WassControlSys.Core
                     Processor = GetCpuName(),
                     TotalRam = GetTotalMemory(),
                     Gpu = GetGpuName(),
-                    SystemDisk = GetSystemDiskInfo()
+                    SystemDisk = GetSystemDiskInfo(),
+                    BiosVersion = GetBiosVersion(),
+                    NetworkInfo = GetNetworkInfo(),
+                    Uptime = GetUptime()
                 };
                 return info;
             });
@@ -75,7 +82,7 @@ namespace WassControlSys.Core
                 foreach (var item in searcher.Get())
                 {
                     return item["Name"]?.ToString() ?? "Desconocido";
-                    // Just return the first GPU found for now
+                    // Por ahora, solo devolver la primera GPU encontrada
                 }
             }
             catch { }
@@ -92,6 +99,55 @@ namespace WassControlSys.Core
             }
             catch { }
             return "Desconocido";
+        }
+
+        private string GetBiosVersion()
+        {
+             try
+            {
+                using var searcher = new ManagementObjectSearcher("SELECT SMBIOSBIOSVersion, Manufacturer FROM Win32_BIOS");
+                foreach (var item in searcher.Get())
+                {
+                    string ver = item["SMBIOSBIOSVersion"]?.ToString();
+                    string man = item["Manufacturer"]?.ToString();
+                    return $"{man} {ver}";
+                }
+            }
+            catch { }
+            return "N/A";
+        }
+
+        private string GetNetworkInfo()
+        {
+            try
+            {
+                if (!NetworkInterface.GetIsNetworkAvailable()) return "Desconectado";
+                
+                var interfaces = NetworkInterface.GetAllNetworkInterfaces()
+                    .Where(i => i.OperationalStatus == OperationalStatus.Up && i.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+                    .OrderByDescending(i => i.GetIPProperties().GatewayAddresses.Count > 0) // Priorizar los que tienen gateway
+                    .FirstOrDefault();
+
+                if (interfaces != null)
+                {
+                    var props = interfaces.GetIPProperties();
+                    var ip = props.UnicastAddresses.FirstOrDefault(a => a.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork);
+                    return $"{interfaces.Name} ({ip?.Address})";
+                }
+            }
+            catch { }
+            return "Desconocido";
+        }
+
+        private string GetUptime()
+        {
+            try
+            {
+                var uptime = TimeSpan.FromMilliseconds(Environment.TickCount64);
+                return $"{uptime.Days}d {uptime.Hours}h {uptime.Minutes}m";
+            }
+            catch { }
+            return "N/A";
         }
 
         private static string FormatBytes(long bytes)

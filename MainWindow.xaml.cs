@@ -12,7 +12,7 @@ using System.Windows.Shapes;
 namespace WassControlSys;
 
 /// <summary>
-/// Interaction logic for MainWindow.xaml
+/// Lógica de interacción para MainWindow.xaml
 /// </summary>
 public partial class MainWindow : Window
 {
@@ -20,7 +20,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         
-        // Update maximize button icon based on window state
+        // Actualizar el icono del botón de maximizar según el estado de la ventana
         this.StateChanged += (s, e) => UpdateMaximizeButtonIcon();
     }
 

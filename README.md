@@ -1,205 +1,125 @@
 # WassControlSys
-Sistema de Control y Optimización para Windows
+
+### Sistema de Control, Optimización y Mantenimiento Avanzado para Windows
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-0.1.1-blue.svg)](https://github.com/ranger00pr0/WassControlSys) [![Platform](https://img.shields.io/badge/platform-Windows-blue.svg)](https://github.com/ranger00pr0/WassControlSys) [![.NET](https://img.shields.io/badge/.NET-8.0-purple.svg)](https://github.com/ranger00pr0/WassControlSys) [![License](https://img.shields.io/badge/license-Proprietary-red.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Windows_10%2F11-blue.svg)](https://github.com/WilmWass/WassControlSys)
+[![.NET](https://img.shields.io/badge/.NET-8.0-purple.svg)](https://dotnet.microsoft.com/)
+[![Status](https://img.shields.io/badge/status-Active_Development-orange.svg)](CHANGELOG.md)
 
-**Sistema de Control y Optimización para Windows**
+**WassControlSys** es una suite de utilidades moderna diseñada por **WilmerWass** para devolverle el control de su sistema operativo. Optimice el rendimiento, limpie archivos basura, gestione la privacidad y elimine el bloatware, todo desde una interfaz unificada y elegante.
 
-Una aplicación para optimizar, limpiar y administrar tu sistema Windows con una interfaz moderna y funcional.
-
-[Descargar](#descarga) • [Características](#características) • [Documentación](#documentación) • [Contribuir](#contribuir)
+[Descargar Última Versión](#descarga) • [Características](#características) • [Documentación](#documentación) • [Contribuir](#contribuir)
 
 </div>
 
 ---
 
-## 📸 Capturas de Pantalla
+## ✨ Características Principales
 
-_Próximamente: capturas de la aplicación._  
-(Coloca imágenes en `docs/images` y pon rutas relativas en el README.)
+### 🚀 Optimización del Sistema
 
----
+- **Gestión de Memoria RAM**: Libere memoria de procesos inactivos con un solo clic o de forma automática.
+- **Mantenimiento de Red**: Limpieza de caché DNS y restablecimiento de pila TCP/IP para solucionar problemas de conexión.
+- **Salud del Disco**: Análisis de fragmentación y herramientas de diagnóstico de almacenamiento.
 
-## ✨ Características
+### 🧹 Limpieza Profunda
 
-### 🎨 Interfaz
-- Temas dinámicos y modo oscuro
-- Tipografía moderna (ej. Roboto)
-- Controles integrados en la ventana (barra de título personalizada)
+- **Archivos Temporales**: Eliminación segura de temporales de sistema, usuario y caché de navegadores.
+- **Prefetch**: Mantenimiento de la carpeta prefetch para resolver problemas de arranque de aplicaciones.
+- **Desinstalador de Bloatware**: Escaneo inteligente (HKCU/HKLM) para detectar y eliminar software preinstalado no deseado.
 
-### 🧹 Limpieza del sistema
-- Limpieza de archivos temporales y caché de navegadores
-- Vaciar papelera y limpiar Prefetch
-- Opciones personalizables por usuario
+### 🛡️ Seguridad y Privacidad
 
-### ⚡ Optimización
-- Optimizar RAM liberando procesos inactivos
-- Limpiar DNS y reiniciar red
-- Análisis de disco y reconstrucción de índice de búsqueda
+- **Monitor de Seguridad**: Estado en tiempo real de Antivirus, Firewall y UAC.
+- **Configuración de Privacidad**: Ajustes rápidos para telemetría y recolección de datos (en desarrollo).
 
-### 🔧 Diagnóstico
-- Ejecutar SFC, DISM y CHKDSK desde la interfaz
-- Reportes y logs de acciones
+### 🔧 Herramientas Avanzadas
 
-### 🛡️ Seguridad
-- Estado de Windows Defender, Firewall y UAC
-- Opciones básicas de privacidad y telemetría
-
-### 🔌 Administración de servicios
-- Listado, inicio/detención y detalles de servicios
-- Búsqueda y filtrado
-
-### 🚀 Programas de inicio
-- Administrar aplicaciones que arrancan con Windows
-- Habilitar/Deshabilitar entradas de inicio
-
-### 🗑️ Desinstalador de bloatware
-- Detectar y eliminar aplicaciones preinstaladas no deseadas
+- **Gestor de Servicios**: Visualice, inicie o detenga servicios de Windows con información detallada.
+- **Gestor de Procesos**: Controle qué se ejecuta en su PC, cambie prioridades o finalice tareas.
+- **Información de Hardware**: Detalles completos sobre CPU, RAM, GPU, BIOS, Red y Uptime.
+- **Reparación de Sistema**: Accesos directos a herramientas críticas como SFC, DISM y CHKDSK.
 
 ---
 
-## 📥 Descarga
+## 📸 Interfaz de Usuario
 
-### Última versión: v0.1.1
+La interfaz ha sido diseñada por **WilmerWass** siguiendo principios modernos de UI/UX, utilizando **WPF** y **XAML** para ofrecer:
 
-[⬇️ Descargar WassControlSys_v0.1.1.zip](https://github.com/ranger00pr0/WassControlSys/releases/latest/download/WassControlSys_v0.1.1.zip)
+- **Modo Oscuro** nativo y elegante.
+- Tipografía **Roboto** para máxima legibilidad.
+- Navegación fluida y animaciones sutiles.
+- Feedback visual inmediato para todas las operaciones.
 
-### Requisitos mínimos
-- Windows 10 (64-bit) o superior  
-- .NET 8.0 Runtime (o la versión que el proyecto requiera)  
-- 2 GB RAM mínimo (4 GB recomendado)  
-- ~50 MB de espacio libre
-
-> Ejecutar como administrador para acceder a todas las funciones.
+_(Capturas de pantalla próximamente en la carpeta `docs/images`)_
 
 ---
 
-## 🚀 Inicio rápido (desarrollo)
+## 📥 Descarga e Instalación
+
+### Requisitos Previos
+
+- Windows 10 (versión 1809 o superior) o Windows 11.
+- [.NET 8.0 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0).
+- Permisos de Administrador (para funciones de limpieza y optimización).
+
+### Instalación
+
+1. Vaya a la sección de [Releases](https://github.com/WilmWass/WassControlSys/releases).
+2. Descargue el archivo `WassControlSys_vX.X.X.zip`.
+3. Descomprima el archivo en una carpeta de su elección.
+4. Ejecute `WassControlSys.exe` (click derecho -> Ejecutar como administrador recomendado).
+
+---
+
+## 🛠️ Desarrollo
+
+Si desea compilar el proyecto desde el código fuente:
 
 ```bash
-# Clonar el repositorio
-git clone https://github.com/ranger00pr0/WassControlSys.git
+# 1. Clonar el repositorio (por el autor original WilmerWass)
+git clone https://github.com/WilmWass/WassControlSys.git
 cd WassControlSys
 
-# Restaurar y compilar
+# 2. Restaurar dependencias
 dotnet restore
+
+# 3. Compilar
 dotnet build
 
-# Ejecutar (ajusta la ruta al .csproj si hace falta)
-dotnet run --project ./Ruta/AlProyecto.csproj
+# 4. Ejecutar
+dotnet run
 ```
+
+Consulte el archivo [CONTRIBUTING.md](CONTRIBUTING.md) para guías detalladas sobre cómo colaborar.
 
 ---
 
-## 🏗️ Arquitectura y tecnologías
+## 📖 Documentación Técnica
 
-- .NET 8.0 (o la versión indicada)  
-- WPF (interfaz) — patrón MVVM  
-- Dependency Injection con Microsoft.Extensions.DependencyInjection
+Para desarrolladores interesados en la estructura interna:
 
-Estructura típica:
-```
-WassControlSys/
-├── Core/
-├── Models/
-├── ViewModels/
-├── Views/
-├── App.xaml
-└── MainWindow.xaml
-```
-
-Dependencias de ejemplo (NuGet):
-```xml
-<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
-<PackageReference Include="System.Management" Version="10.0.0" />
-```
+- **[Arquitectura](docs/ARCHITECTURE.md)**: Visión general de MVVM, Inyección de Dependencias y organización del código.
+- **[Changelog](CHANGELOG.md)**: Historial de versiones y cambios.
 
 ---
 
-## 📖 Documentación
-- Guía de usuario: README.md (esta página)  
-- Notas de versión: ver sección Changelog  
-- Documentación técnica en `implementaciones/` y `docs/` (si aplica)
+## ⚠️ Aviso Legal
 
----
-
-## 🛠️ Desarrollo y distribución
-
-Compilar en modo Release:
-```bash
-dotnet build -c Release
-```
-
-Publicar ejecutable (ejemplo win-x64):
-```bash
-dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o ./publish
-```
-
-Crear ZIP de distribución (PowerShell):
-```powershell
-Compress-Archive -Path ".\publish\*" -DestinationPath ".\WassControlSys_v0.1.1.zip" -Force
-```
-
----
-
-## 🤝 Contribuir
-
-1. Haz fork del repositorio.  
-2. Crea una rama: `git checkout -b feature/nombre`.  
-3. Haz commits claros y push.  
-4. Abre un Pull Request describiendo los cambios.  
-
-Antes de reportar un bug, busca si ya existe un issue similar y añade pasos para reproducir, versión de Windows y capturas si aplican.
-
----
-
-## 🗺️ Roadmap (resumen)
-
-Próximas ideas:
-- Mejoras en temas y personalización
-- Exportar reportes del sistema
-- Programador de tareas y actualizaciones automáticas
-- Monitor de red en tiempo real
-- Limpiador del registro (opcional, con advertencias)
-
----
-
-## 📝 Changelog (resumen v0.1.1)
-- Sistema de colores dinámicos y tipografía Roboto  
-- Módulo de optimización ampliado  
-- Mejoras en la vista de servicios y legibilidad
-
-(Actualizar con fechas y detalles reales según avance.)
-
----
-
-## ⚠️ Advertencias
-- Algunas acciones requieren permisos de administrador.  
-- No detener servicios críticos del sistema.  
-- Recomendado crear un punto de restauración antes de cambios importantes.  
-- Ejecutables sin firma pueden dar falsos positivos en antivirus.
+Este software realiza modificaciones en el sistema operativo. Aunque ha sido probado exhaustivamente, el uso es **bajo su propia responsabilidad**. Se recomienda encarecidamente crear un **Punto de Restauración del Sistema** antes de realizar limpiezas profundas o desinstalación de bloatware.
 
 ---
 
 ## 📄 Licencia
-Copyright © 2025 WassControl.  
-Este software es propietario. Ver el archivo LICENSE para más detalles.
+
+Este proyecto está licenciado bajo la Licencia **MIT**. Consulte el archivo [LICENSE](LICENSE) para más detalles.
+Copyright © 2025 **WilmerWass**.
 
 ---
 
-## 🙏 Agradecimientos
-- Microsoft (.NET & WPF)  
-- Google Fonts (Roboto)  
-- Comunidad de GitHub
-
----
-
-## 📞 Contacto
-- Issues: https://github.com/ranger00pr0/WassControlSys/issues  
-- Discussions: https://github.com/ranger00pr0/WassControlSys/discussions
-
----
-
-Hecho con ❤️ para la comunidad de Windows.
+<div align="center">
+Hecho con ❤️ por <b>WilmerWass</b> usando .NET 8 y WPF
+</div>

@@ -11,7 +11,7 @@ namespace WassControlSys.Core
     public class BloatwareService : IBloatwareService
     {
         private readonly ILogService _log;
-        private readonly IDialogService _dialogService; // For warnings/confirmations
+        private readonly IDialogService _dialogService; // Para advertencias/confirmaciones
 
         public BloatwareService(ILogService log, IDialogService dialogService)
         {
@@ -25,45 +25,53 @@ namespace WassControlSys.Core
             {
                 var bloatwareList = new List<BloatwareApp>();
 
-                // Common uninstall registry paths
-                string[] uninstallPaths = new string[]
+                // Rutas de registro tanto de Máquina Local (HKLM) como de Usuario Actual (HKCU)
+                var rootKeys = new[] { Registry.LocalMachine, Registry.CurrentUser };
+                var uninstallPaths = new[]
                 {
                     @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
                     @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"
                 };
 
-                foreach (string uninstallPath in uninstallPaths)
+                foreach (var rootKey in rootKeys)
                 {
-                    using (RegistryKey baseKey = Registry.LocalMachine.OpenSubKey(uninstallPath))
+                    foreach (var uninstallPath in uninstallPaths)
                     {
-                        if (baseKey != null)
+                        using (RegistryKey baseKey = rootKey.OpenSubKey(uninstallPath))
                         {
+                            if (baseKey == null) continue;
+
                             foreach (string subKeyName in baseKey.GetSubKeyNames())
                             {
                                 using (RegistryKey subKey = baseKey.OpenSubKey(subKeyName))
                                 {
-                                    if (subKey != null)
-                                    {
-                                        var appName = subKey.GetValue("DisplayName")?.ToString();
-                                        var publisher = subKey.GetValue("Publisher")?.ToString();
-                                        var installLocation = subKey.GetValue("InstallLocation")?.ToString();
-                                        var uninstallString = subKey.GetValue("UninstallString")?.ToString();
+                                    if (subKey == null) continue;
 
-                                        if (!string.IsNullOrEmpty(appName) && !string.IsNullOrEmpty(uninstallString))
+                                    var appName = subKey.GetValue("DisplayName")?.ToString();
+                                    var publisher = subKey.GetValue("Publisher")?.ToString();
+                                    var installLocation = subKey.GetValue("InstallLocation")?.ToString();
+                                    var uninstallString = subKey.GetValue("UninstallString")?.ToString();
+
+                                    if (!string.IsNullOrEmpty(appName) && !string.IsNullOrEmpty(uninstallString))
+                                    {
+                                        // RELAJAR FILTRADO: Si la heurística es muy estricta, no saldrá nada
+                                        // Por ahora, incluiremos MÁS apps para probar, pero marcaremos si es sospechoso
+                                        
+                                        // bool isBloat = IsPotentialBloatware(appName, publisher);
+                                        // Para que el usuario vea ALGO, vamos a listar todo lo que no sea esencial del sistema
+                                        // y dejaremos que el usuario decida (con cuidado).
+                                        
+                                        // Filtrado básico de seguridad (no listar drivers ni updates de seguridad críticos)
+                                        if (!IsCriticalSystemComponent(appName, publisher)) 
                                         {
-                                            // Basic bloatware filtering - this needs refinement
-                                            // Example: Filter out known system components or essential Microsoft software
-                                            if (IsPotentialBloatware(appName, publisher))
+                                            bloatwareList.Add(new BloatwareApp
                                             {
-                                                bloatwareList.Add(new BloatwareApp
-                                                {
-                                                    Name = appName,
-                                                    Publisher = publisher,
-                                                    InstallLocation = installLocation,
-                                                    UninstallCommand = uninstallString,
-                                                    IsSystemApp = IsWindowsSystemApp(publisher)
-                                                });
-                                            }
+                                                Name = appName,
+                                                Publisher = publisher,
+                                                InstallLocation = installLocation,
+                                                UninstallCommand = uninstallString,
+                                                IsSystemApp = IsWindowsSystemApp(publisher)
+                                            });
                                         }
                                     }
                                 }
@@ -71,7 +79,9 @@ namespace WassControlSys.Core
                         }
                     }
                 }
-                return bloatwareList.OrderBy(a => a.Name);
+                
+                // Eliminar duplicados por nombre
+                return bloatwareList.GroupBy(x => x.Name).Select(g => g.First()).OrderBy(a => a.Name);
             });
         }
 
@@ -83,7 +93,7 @@ namespace WassControlSys.Core
                 return false;
             }
 
-            // Always ask for confirmation before uninstalling
+            // Siempre pedir confirmación antes de desinstalar
             bool confirm = await _dialogService.ShowConfirmation($"¿Está seguro de que desea desinstalar '{app.Name}'? Esta acción no se puede deshacer.", "Confirmar Desinstalación");
             if (!confirm) return false;
 
@@ -91,21 +101,21 @@ namespace WassControlSys.Core
             {
                 _log.Info($"Attempting to uninstall bloatware app: {app.Name} with command: {app.UninstallCommand}");
                 
-                // Uninstall commands can vary wildly (msiexec, setup.exe, custom EXEs)
-                // This is a basic attempt to handle common cases.
-                // More robust parsing and execution might be needed.
+                // Los comandos de desinstalación pueden variar mucho (msiexec, setup.exe, EXEs personalizados)
+                // Este es un intento básico para manejar casos comunes.
+                // Podría ser necesario un análisis y ejecución más robustos.
                 ProcessStartInfo psi;
                 if (app.UninstallCommand.StartsWith("MsiExec.exe", StringComparison.OrdinalIgnoreCase))
                 {
                     psi = new ProcessStartInfo("msiexec.exe", app.UninstallCommand.Replace("MsiExec.exe", "").Trim())
                     {
                         UseShellExecute = true,
-                        Verb = "runas" // Request UAC elevation
+                        Verb = "runas" // Solicitar elevación de UAC
                     };
                 }
                 else
                 {
-                    // Attempt to parse the command and arguments
+                    // Intentar parsear el comando y los argumentos
                     string command = app.UninstallCommand;
                     string arguments = "";
 
@@ -118,7 +128,7 @@ namespace WassControlSys.Core
                     psi = new ProcessStartInfo(command, arguments)
                     {
                         UseShellExecute = true,
-                        Verb = "runas" // Request UAC elevation
+                        Verb = "runas" // Solicitar elevación de UAC
                     };
                 }
 
@@ -130,10 +140,10 @@ namespace WassControlSys.Core
                         await _dialogService.ShowMessage($"No se pudo iniciar el proceso de desinstalación para '{app.Name}'.", "Error de Desinstalación");
                         return false;
                     }
-                    await Task.Run(() => process.WaitForExit()); // Wait for the uninstall process to complete
+                    await Task.Run(() => process.WaitForExit()); // Esperar a que el proceso de desinstalación se complete
                     _log.Info($"Uninstall process for {app.Name} exited with code {process.ExitCode}");
                     
-                    if (process.ExitCode == 0) // Typically 0 means success
+                    if (process.ExitCode == 0) // Típicamente 0 significa éxito
                     {
                          await _dialogService.ShowMessage($"'{app.Name}' desinstalado correctamente. Es posible que necesite reiniciar el sistema.", "Desinstalación Completa");
                         return true;
@@ -153,28 +163,21 @@ namespace WassControlSys.Core
             }
         }
 
-        private bool IsPotentialBloatware(string appName, string publisher)
+        private bool IsCriticalSystemComponent(string appName, string publisher)
         {
-            // This is a very basic heuristic and will need significant refinement.
-            // Consider expanding with a curated list, or more complex logic.
-            if (string.IsNullOrEmpty(appName)) return false;
+            if (string.IsNullOrEmpty(appName)) return true; // Skip unknown
 
-            // Simple exclusions
-            if (appName.Contains("Microsoft", StringComparison.OrdinalIgnoreCase) && !appName.Contains("Store", StringComparison.OrdinalIgnoreCase)) return false;
-            if (appName.Contains("Windows", StringComparison.OrdinalIgnoreCase) && !appName.Contains("Edge", StringComparison.OrdinalIgnoreCase)) return false;
-            if (appName.Contains("Visual Studio", StringComparison.OrdinalIgnoreCase)) return false;
-            if (appName.Contains("Office", StringComparison.OrdinalIgnoreCase)) return false;
-            if (appName.Contains("Driver", StringComparison.OrdinalIgnoreCase)) return false;
-            if (appName.Contains("Security", StringComparison.OrdinalIgnoreCase)) return false;
-
-            // Simple inclusions (examples - these might be too aggressive)
-            if (publisher != null && publisher.Contains("Dell", StringComparison.OrdinalIgnoreCase)) return true;
-            if (publisher != null && publisher.Contains("HP", StringComparison.OrdinalIgnoreCase)) return true;
-            if (publisher != null && publisher.Contains("Lenovo", StringComparison.OrdinalIgnoreCase)) return true;
-            if (appName.Contains("Candy Crush", StringComparison.OrdinalIgnoreCase)) return true;
-            if (appName.Contains("Xbox", StringComparison.OrdinalIgnoreCase) && !appName.Contains("Game Bar", StringComparison.OrdinalIgnoreCase)) return true; // Most Xbox apps are bloat for non-gamers
-
-            return false; // Default to not bloatware
+            // Exclusiones críticas (Drivers, .NET, C++, Windows Updates)
+            if (appName.Contains("Microsoft Visual C++", StringComparison.OrdinalIgnoreCase)) return true;
+            if (appName.Contains(".NET", StringComparison.OrdinalIgnoreCase)) return true;
+            if (appName.Contains("Driver", StringComparison.OrdinalIgnoreCase)) return true;
+            if (appName.Contains("Intel", StringComparison.OrdinalIgnoreCase)) return true;
+            if (appName.Contains("NVIDIA", StringComparison.OrdinalIgnoreCase)) return true;
+            if (appName.Contains("AMD", StringComparison.OrdinalIgnoreCase)) return true;
+            if (appName.Contains("Realtek", StringComparison.OrdinalIgnoreCase)) return true;
+            if (appName.Contains("Update for Windows", StringComparison.OrdinalIgnoreCase)) return true;
+            
+            return false; 
         }
 
         private bool IsWindowsSystemApp(string publisher)

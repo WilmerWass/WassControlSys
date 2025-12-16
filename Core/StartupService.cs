@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Win32; // For Registry access
+using Microsoft.Win32; // Para acceso al Registro
 using WassControlSys.Models;
 
 namespace WassControlSys.Core
@@ -40,7 +40,7 @@ namespace WassControlSys.Core
                     case StartupItemType.StartupFolder:
                         return SetStartupFolderItemState(item, true);
                     //case StartupItemType.TaskScheduler:
-                    //    // To be implemented
+                    // Pendiente de implementar
                     //    _log.Warn($"Task Scheduler item enabling not yet supported: {item.Name}");
                     //    return false;
                     default:
@@ -62,7 +62,7 @@ namespace WassControlSys.Core
                     case StartupItemType.StartupFolder:
                         return SetStartupFolderItemState(item, false);
                     //case StartupItemType.TaskScheduler:
-                    //    // To be implemented
+                    // Pendiente de implementar
                     //    _log.Warn($"Task Scheduler item disabling not yet supported: {item.Name}");
                     //    return false;
                     default:
@@ -82,8 +82,8 @@ namespace WassControlSys.Core
 
             foreach (var keyPath in runKeys)
             {
-                // HKLM (Local Machine) requires admin, HKCU (Current User) does not
-                // Reading from HKLM
+                // HKLM (Máquina Local) requiere administrador, HKCU (Usuario Actual) no
+                // Leyendo de HKLM
                 try
                 {
                     using (var baseKey = Registry.LocalMachine.OpenSubKey(keyPath))
@@ -99,7 +99,7 @@ namespace WassControlSys.Core
                                     {
                                         Name = valueName,
                                         Path = path,
-                                        IsEnabled = true, // If it's in Run, it's considered enabled
+                                        IsEnabled = true, // Si está en Run, se considera habilitado
                                         Type = StartupItemType.RegistryRun
                                     });
                                 }
@@ -112,7 +112,7 @@ namespace WassControlSys.Core
                     _log.Warn($"Could not read HKLM registry key {keyPath}: {ex.Message}");
                 }
 
-                // Reading from HKCU
+                // Leyendo de HKCU
                 try
                 {
                     using (var baseKey = Registry.CurrentUser.OpenSubKey(keyPath))
@@ -128,7 +128,7 @@ namespace WassControlSys.Core
                                     {
                                         Name = valueName,
                                         Path = path,
-                                        IsEnabled = true, // If it's in Run, it's considered enabled
+                                        IsEnabled = true, // Si está en Run, se considera habilitado
                                         Type = StartupItemType.RegistryRun
                                     });
                                 }
@@ -148,13 +148,13 @@ namespace WassControlSys.Core
         {
             // This is tricky. To "disable" a registry item without deleting it,
             // we'd typically move it to a "disabled" key or rename it.
-            // For simplicity in this initial version, we'll assume enabling means ensuring it's in the Run key,
-            // and disabling means removing it. This is destructive, so a warning would be needed in UI.
+            // Para simplificar en esta versión inicial, asumiremos que habilitar significa asegurar que está en la clave Run,
+            // y deshabilitar significa eliminarlo. Esto es destructivo, por lo que se necesitaría una advertencia en la UI.
             _log.Warn($"SetRegistryStartupItemState for {item.Name} ({item.Type}): Currently not fully implemented/destructive.");
             _log.Warn("Enabling/disabling registry startup items currently involves adding/removing entries, which is a destructive action.");
             
-            // This method would require administrative privileges to modify HKLM keys.
-            // For now, return false as it's not fully implemented safely.
+            // Este método requeriría privilegios administrativos para modificar las claves HKLM.
+            // Por ahora, devuelve falso ya que no está completamente implementado de forma segura.
             return false;
         }
 
@@ -162,8 +162,8 @@ namespace WassControlSys.Core
         {
             var items = new List<StartupItem>();
             string[] startupPaths = {
-                Environment.GetFolderPath(Environment.SpecialFolder.Startup), // Per-user Startup
-                Environment.GetFolderPath(Environment.SpecialFolder.CommonStartup) // All Users Startup
+                Environment.GetFolderPath(Environment.SpecialFolder.Startup), // Inicio por usuario
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonStartup) // Inicio para todos los usuarios
             };
 
             foreach (var path in startupPaths)
@@ -174,7 +174,7 @@ namespace WassControlSys.Core
                     {
                         foreach (var file in Directory.EnumerateFiles(path, "*.*", SearchOption.TopDirectoryOnly))
                         {
-                            // Filter for executables, shortcuts, etc.
+                            // Filtrar ejecutables, accesos directos, etc.
                             string extension = Path.GetExtension(file).ToLowerInvariant();
                             if (new[] { ".exe", ".lnk", ".bat", ".vbs", ".cmd" }.Contains(extension))
                             {
@@ -182,7 +182,7 @@ namespace WassControlSys.Core
                                 {
                                     Name = Path.GetFileNameWithoutExtension(file),
                                     Path = file,
-                                    IsEnabled = true, // If it's in the folder and a valid type, it's enabled
+                                    IsEnabled = true, // Si está en la carpeta y es un tipo válido, está habilitado
                                     Type = StartupItemType.StartupFolder
                                 });
                             }
@@ -199,9 +199,9 @@ namespace WassControlSys.Core
 
         private bool SetStartupFolderItemState(StartupItem item, bool enable)
         {
-            // For simplicity, disabling would mean moving it out of the folder,
-            // enabling would mean moving it back. This also requires careful handling
-            // and potentially administrative privileges if in CommonStartup.
+            // Para simplificar, deshabilitar significaría moverlo fuera de la carpeta,
+            // habilitar significaría moverlo de vuelta. Esto también requiere un manejo cuidadoso
+            // y potencialmente privilegios administrativos si está en CommonStartup.
             _log.Warn($"SetStartupFolderItemState for {item.Name} ({item.Type}): Currently not fully implemented/destructive.");
             _log.Warn("Enabling/disabling startup folder items currently involves moving files, which is a destructive action.");
             return false;

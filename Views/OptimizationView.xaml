@@ -20,38 +20,38 @@
                 </Border>
 
                 <!-- DNS Cache -->
-                <Border Background="{StaticResource SurfaceBrush}" CornerRadius="12" Padding="20" Margin="0,0,20,20" Width="300" VerticalAlignment="Top">
+                <Border Background="{StaticResource SurfaceBrush}" CornerRadius="12" Padding="20" Margin="0,0,20,20" MinWidth="260" MaxWidth="360" VerticalAlignment="Top">
                     <StackPanel>
-                        <TextBlock Text="Caché DNS" FontSize="18" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,15"/>
-                        <TextBlock Text="Limpia la caché DNS para resolver problemas de conectividad y mejorar la velocidad de navegación." Foreground="#AAA" FontSize="13" Margin="0,0,0,15" TextWrapping="Wrap" Height="60"/>
-                        <Button Content="Limpiar DNS" Command="{Binding FlushDnsCommand}" Style="{StaticResource PrimaryButtonStyle}"/>
+                        <TextBlock Text="{DynamicResource Optimization_DNS_Title}" FontSize="18" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,15"/>
+                        <TextBlock Text="{DynamicResource Optimization_DNS_Desc}" Foreground="#AAA" FontSize="13" Margin="0,0,0,15" TextWrapping="Wrap" Height="60"/>
+                        <Button Content="{DynamicResource Optimization_DNS_Button}" Command="{Binding FlushDnsCommand}" Style="{StaticResource PrimaryButtonStyle}"/>
                     </StackPanel>
                 </Border>
 
                 <!-- Disk Defrag Analysis -->
-                <Border Background="{StaticResource SurfaceBrush}" CornerRadius="12" Padding="20" Margin="0,0,20,20" Width="300" VerticalAlignment="Top">
+                <Border Background="{StaticResource SurfaceBrush}" CornerRadius="12" Padding="20" Margin="0,0,20,20" MinWidth="260" MaxWidth="360" VerticalAlignment="Top">
                     <StackPanel>
-                        <TextBlock Text="Desfragmentación" FontSize="18" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,15"/>
-                        <TextBlock Text="Analiza el estado de fragmentación del disco. (Solo HDD, no recomendado para SSD)" Foreground="#AAA" FontSize="13" Margin="0,0,0,15" TextWrapping="Wrap" Height="60"/>
-                        <Button Content="Analizar Disco" Command="{Binding AnalyzeDiskCommand}" Style="{StaticResource SecondaryButtonStyle}"/>
+                        <TextBlock Text="{DynamicResource Optimization_Defrag_Title}" FontSize="18" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,15"/>
+                        <TextBlock Text="{DynamicResource Optimization_Defrag_Desc}" Foreground="#AAA" FontSize="13" Margin="0,0,0,15" TextWrapping="Wrap" Height="60"/>
+                        <Button Content="{DynamicResource Optimization_Defrag_Button}" Command="{Binding AnalyzeDiskCommand}" Style="{StaticResource SecondaryButtonStyle}"/>
                     </StackPanel>
                 </Border>
 
                 <!-- Windows Search Index -->
-                <Border Background="{StaticResource SurfaceBrush}" CornerRadius="12" Padding="20" Margin="0,0,20,20" Width="300" VerticalAlignment="Top">
+                <Border Background="{StaticResource SurfaceBrush}" CornerRadius="12" Padding="20" Margin="0,0,20,20" MinWidth="260" MaxWidth="360" VerticalAlignment="Top">
                     <StackPanel>
-                        <TextBlock Text="Índice de Búsqueda" FontSize="18" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,15"/>
-                        <TextBlock Text="Reconstruye el índice de búsqueda de Windows para mejorar la velocidad de búsqueda." Foreground="#AAA" FontSize="13" Margin="0,0,0,15" TextWrapping="Wrap" Height="60"/>
-                        <Button Content="Reconstruir Índice" Command="{Binding RebuildSearchIndexCommand}" Style="{StaticResource SecondaryButtonStyle}"/>
+                        <TextBlock Text="{DynamicResource Optimization_SearchIndex_Title}" FontSize="18" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,15"/>
+                        <TextBlock Text="{DynamicResource Optimization_SearchIndex_Desc}" Foreground="#AAA" FontSize="13" Margin="0,0,0,15" TextWrapping="Wrap" Height="60"/>
+                        <Button Content="{DynamicResource Optimization_SearchIndex_Button}" Command="{Binding RebuildSearchIndexCommand}" Style="{StaticResource SecondaryButtonStyle}"/>
                     </StackPanel>
                 </Border>
 
                 <!-- Prefetch Cleanup -->
-                <Border Background="{StaticResource SurfaceBrush}" CornerRadius="12" Padding="20" Margin="0,0,20,20" Width="300" VerticalAlignment="Top">
+                <Border Background="{StaticResource SurfaceBrush}" CornerRadius="12" Padding="20" Margin="0,0,20,20" MinWidth="260" MaxWidth="360" VerticalAlignment="Top">
                     <StackPanel>
-                        <TextBlock Text="Prefetch" FontSize="18" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,15"/>
-                        <TextBlock Text="Limpia archivos prefetch antiguos que ya no son necesarios para optimizar el inicio." Foreground="#AAA" FontSize="13" Margin="0,0,0,15" TextWrapping="Wrap" Height="60"/>
-                        <Button Content="Limpiar Prefetch" Command="{Binding CleanPrefetchCommand}" Style="{StaticResource SecondaryButtonStyle}"/>
+                        <TextBlock Text="{DynamicResource Optimization_Prefetch_Title}" FontSize="18" FontWeight="SemiBold" Foreground="White" Margin="0,0,0,15"/>
+                        <TextBlock Text="{DynamicResource Optimization_Prefetch_Desc}" Foreground="#AAA" FontSize="13" Margin="0,0,0,15" TextWrapping="Wrap" Height="60"/>
+                        <Button Content="{DynamicResource Optimization_Prefetch_Button}" Command="{Binding CleanPrefetchCommand}" Style="{StaticResource SecondaryButtonStyle}"/>
                     </StackPanel>
                 </Border>
 

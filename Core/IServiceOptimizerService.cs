@@ -11,7 +11,7 @@ namespace WassControlSys.Core
         Task<bool> StopServiceAsync(string serviceName);
         Task<bool> SetServiceStartTypeAsync(string serviceName, ServiceStartType startType);
         
-        // Profiles functionality (to be implemented later)
+        // Funcionalidad de perfiles (a implementar más tarde)
         // Task<IEnumerable<ServiceProfile>> GetAvailableProfilesAsync();
         // Task<bool> ApplyProfileAsync(ServiceProfile profile);
     }

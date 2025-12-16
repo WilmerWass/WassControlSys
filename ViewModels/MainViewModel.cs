@@ -7,6 +7,7 @@ using System.Windows.Input; // Añadido para ICommand
 using WassControlSys.Core; // Añadido para RelayCommand
 using WassControlSys.Models; // Añadido para Models
 using System.Windows.Threading; // Añadido para DispatcherTimer
+using System.Diagnostics;
 using System;
 using System.Linq; // Added for FirstOrDefault
 using System.IO; // Added for File and Directory operations
@@ -28,9 +29,11 @@ namespace WassControlSys.ViewModels
         private readonly IServiceOptimizerService _serviceOptimizerService; // Added
         private readonly IBloatwareService _bloatwareService; // Added
         private readonly IPrivacyService _privacyService; // Added
+        private readonly IProcessManagerService _processManagerService;
+        private readonly ILocalizationService _localizationService;
 
         // Constructor del ViewModel principal
-        public MainViewModel(ISystemMaintenanceService maintenance, IMonitoringService monitoringService, IPerformanceProfileService profiles, ISettingsService settings, ILogService log, ISystemInfoService systemInfoService, ISecurityService securityService, IDialogService dialogService, IStartupService startupService, IServiceOptimizerService serviceOptimizerService, IBloatwareService bloatwareService, IPrivacyService privacyService)
+        public MainViewModel(ISystemMaintenanceService maintenance, IMonitoringService monitoringService, IPerformanceProfileService profiles, ISettingsService settings, ILogService log, ISystemInfoService systemInfoService, ISecurityService securityService, IDialogService dialogService, IStartupService startupService, IServiceOptimizerService serviceOptimizerService, IBloatwareService bloatwareService, IPrivacyService privacyService, IProcessManagerService processManagerService, ITemperatureMonitorService temperatureMonitorService, IDiskHealthService diskHealthService, ILocalizationService localizationService)
         {
             // Lógica de inicialización para el ViewModel principal
             _maintenance = maintenance;
@@ -45,6 +48,10 @@ namespace WassControlSys.ViewModels
             _serviceOptimizerService = serviceOptimizerService; // Added
             _bloatwareService = bloatwareService; // Added
             _privacyService = privacyService; // Added
+            _processManagerService = processManagerService;
+            _temperatureMonitorService = temperatureMonitorService;
+            _diskHealthService = diskHealthService;
+            _localizationService = localizationService;
 
             WelcomeMessage = "¡Bienvenido a WassControlSys! (Fase 1: Núcleo de Mantenimiento)";
             
@@ -83,6 +90,14 @@ namespace WassControlSys.ViewModels
             RefreshBloatwareAppsCommand = new RelayCommand(async _ => await LoadBloatwareAppsAsync());
             UpdatePrivacySettingCommand = new RelayCommand<PrivacySetting>(async setting => await ExecuteUpdatePrivacySettingAsync(setting));
             RefreshPrivacySettingsCommand = new RelayCommand(async _ => await LoadPrivacySettingsAsync());
+            RefreshProcessesCommand = new RelayCommand(async _ => await LoadProcessesAsync());
+            ReduceBackgroundProcessesCommand = new RelayCommand(async _ => await ExecuteReduceBackgroundAsync());
+            SetProcessPriorityHighCommand = new RelayCommand<ProcessInfoDto>(async p => await ExecuteSetProcessPriorityAsync(p, System.Diagnostics.ProcessPriorityClass.High));
+            SetProcessPriorityNormalCommand = new RelayCommand<ProcessInfoDto>(async p => await ExecuteSetProcessPriorityAsync(p, System.Diagnostics.ProcessPriorityClass.Normal));
+            SetProcessPriorityBelowNormalCommand = new RelayCommand<ProcessInfoDto>(async p => await ExecuteSetProcessPriorityAsync(p, System.Diagnostics.ProcessPriorityClass.BelowNormal));
+            KillProcessCommand = new RelayCommand<ProcessInfoDto>(async p => await ExecuteKillProcessAsync(p));
+            RefreshThermalCommand = new RelayCommand(async _ => await UpdateThermalAsync());
+            RefreshDiskHealthCommand = new RelayCommand(async _ => await LoadDiskHealthAsync());
 
 
             // Establecer modo por defecto antes de cargar ajustes
@@ -95,6 +110,7 @@ namespace WassControlSys.ViewModels
             _monitoringTimer = new DispatcherTimer();
             _monitoringTimer.Interval = TimeSpan.FromSeconds(2);
             _monitoringTimer.Tick += (s, e) => UpdateSystemUsage();
+            _monitoringTimer.Tick += async (s, e) => await UpdateThermalAsync();
             _monitoringTimer.Start();
 
             // Cargar información del sistema
@@ -104,6 +120,8 @@ namespace WassControlSys.ViewModels
             _ = LoadWindowsServicesAsync(); // Load Windows services on startup
             _ = LoadBloatwareAppsAsync(); // Load bloatware apps on startup
             _ = LoadPrivacySettingsAsync(); // Load privacy settings on startup
+            _ = LoadProcessesAsync();
+            _ = UpdateThermalAsync();
         }
 
         // Implementación de la interfaz INotifyPropertyChanged
@@ -135,6 +153,29 @@ namespace WassControlSys.ViewModels
         {
             get => _isBusy;
             set { if (_isBusy != value) { _isBusy = value; OnPropertyChanged(); } }
+        }
+        
+        private string _statusMessage = "";
+        public string StatusMessage
+        {
+            get => _statusMessage;
+            set { if (_statusMessage != value) { _statusMessage = value; OnPropertyChanged(); } }
+        }
+        
+        private string _selectedLanguage = "es";
+        public string SelectedLanguage
+        {
+            get => _selectedLanguage;
+            set
+            {
+                if (_selectedLanguage != value)
+                {
+                    _selectedLanguage = value;
+                    OnPropertyChanged();
+                    _ = _localizationService.SetLanguageAsync(value);
+                    _ = SaveSettingsAsync();
+                }
+            }
         }
 
         // --- Propiedades para Selector de Modo (Task 02) ---
@@ -232,6 +273,175 @@ namespace WassControlSys.ViewModels
             set { if (_privacySettings != value) { _privacySettings = value; OnPropertyChanged(); } }
         }
 
+        private ObservableCollection<ProcessInfoDto> _processes;
+        public ObservableCollection<ProcessInfoDto> Processes
+        {
+            get => _processes;
+            set { if (_processes != value) { _processes = value; OnPropertyChanged(); } }
+        }
+
+        private ProcessImpactStats _processImpact;
+        public ProcessImpactStats ProcessImpact
+        {
+            get => _processImpact;
+            set { if (_processImpact != value) { _processImpact = value; OnPropertyChanged(); } }
+        }
+
+        private readonly ITemperatureMonitorService _temperatureMonitorService;
+        private readonly IDiskHealthService _diskHealthService;
+        private double? _cpuTempC;
+        public double? CpuTempC
+        {
+            get => _cpuTempC;
+            set { if (_cpuTempC != value) { _cpuTempC = value; OnPropertyChanged(); } }
+        }
+
+        private string _thermalAlert;
+        public string ThermalAlert
+        {
+            get => _thermalAlert;
+            set { if (_thermalAlert != value) { _thermalAlert = value; OnPropertyChanged(); } }
+        }
+
+        private ObservableCollection<DiskHealthInfo> _diskHealth;
+        public ObservableCollection<DiskHealthInfo> DiskHealth
+        {
+            get => _diskHealth;
+            set { if (_diskHealth != value) { _diskHealth = value; OnPropertyChanged(); } }
+        }
+
+        private async Task LoadProcessesAsync()
+        {
+            try
+            {
+                IsBusy = true;
+                var list = await _processManagerService.GetProcessesAsync();
+                Processes = new ObservableCollection<ProcessInfoDto>(list);
+                ProcessImpact = await _processManagerService.ComputeImpactAsync();
+            }
+            catch (Exception ex)
+            {
+                _log?.Error("Error cargando procesos", ex);
+                await _dialogService.ShowMessage($"Error cargando procesos: {ex.Message}", "Error");
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        public async Task ExecuteSetProcessPriorityAsync(ProcessInfoDto p, ProcessPriorityClass priority)
+        {
+            if (p == null || IsBusy) return;
+            try
+            {
+                IsBusy = true;
+                bool ok = await _processManagerService.SetPriorityAsync(p.Pid, priority);
+                if (ok)
+                {
+                    p.Priority = priority;
+                    await _dialogService.ShowMessage($"Prioridad actualizada: {p.Name}", "Éxito");
+                }
+                else
+                {
+                    await _dialogService.ShowMessage($"No se pudo actualizar prioridad: {p.Name}", "Error");
+                }
+            }
+            catch (Exception ex)
+            {
+                _log?.Error("Error cambiando prioridad", ex);
+                await _dialogService.ShowMessage($"Error cambiando prioridad: {ex.Message}", "Error");
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        public async Task ExecuteKillProcessAsync(ProcessInfoDto p)
+        {
+            if (p == null || IsBusy) return;
+            bool confirm = await _dialogService.ShowConfirmation($"¿Desea finalizar {p.Name}?", "Confirmar");
+            if (!confirm) return;
+            try
+            {
+                IsBusy = true;
+                bool ok = await _processManagerService.KillProcessAsync(p.Pid);
+                if (ok)
+                {
+                    Processes.Remove(p);
+                    await _dialogService.ShowMessage("Proceso finalizado", "Éxito");
+                }
+                else
+                {
+                    await _dialogService.ShowMessage("No se pudo finalizar el proceso", "Error");
+                }
+            }
+            catch (Exception ex)
+            {
+                _log?.Error("Error finalizando proceso", ex);
+                await _dialogService.ShowMessage($"Error finalizando proceso: {ex.Message}", "Error");
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        private async Task ExecuteReduceBackgroundAsync()
+        {
+            if (IsBusy) return;
+            try
+            {
+                IsBusy = true;
+                int changed = await _processManagerService.ReduceBackgroundProcessesAsync(ProcessPriorityClass.BelowNormal);
+                await _dialogService.ShowMessage($"Procesos ajustados: {changed}", "Reducción de fondo");
+                await LoadProcessesAsync();
+            }
+            catch (Exception ex)
+            {
+                _log?.Error("Error reduciendo procesos en segundo plano", ex);
+                await _dialogService.ShowMessage($"Error reduciendo procesos: {ex.Message}", "Error");
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        private async Task UpdateThermalAsync()
+        {
+            try
+            {
+                var temp = await _temperatureMonitorService.GetCpuTemperatureCAsync();
+                CpuTempC = temp;
+                ThermalAlert = temp.HasValue && temp.Value >= 85 ? "Alerta: Temperatura alta" : "";
+            }
+            catch (Exception ex)
+            {
+                _log?.Warn($"No se pudo leer temperatura: {ex.Message}");
+            }
+        }
+
+        private async Task LoadDiskHealthAsync()
+        {
+            try
+            {
+                IsBusy = true;
+                var items = await _diskHealthService.GetDiskHealthAsync();
+                DiskHealth = new ObservableCollection<DiskHealthInfo>(items);
+            }
+            catch (Exception ex)
+            {
+                _log?.Error("Error cargando salud de discos", ex);
+                await _dialogService.ShowMessage($"Error cargando salud de discos: {ex.Message}", "Error");
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
         private bool _cleanRecycleBin = true;
         public bool CleanRecycleBin
         {
@@ -290,6 +500,22 @@ namespace WassControlSys.ViewModels
             }
         }
 
+        private bool _autoOptimizeRam;
+        public bool AutoOptimizeRam
+        {
+            get => _autoOptimizeRam;
+            set { if (_autoOptimizeRam != value) { _autoOptimizeRam = value; OnPropertyChanged(); _ = SaveSettingsAsync(); } }
+        }
+
+        private double _ramThresholdPercent = 85;
+        public double RamThresholdPercent
+        {
+            get => _ramThresholdPercent;
+            set { if (Math.Abs(_ramThresholdPercent - value) > 0.01) { _ramThresholdPercent = value; OnPropertyChanged(); _ = SaveSettingsAsync(); } }
+        }
+
+        private DateTime _lastAutoRamOptimization = DateTime.MinValue;
+
         public ICommand ChangeAccentColorCommand { get; private set; }
 
         // Propiedad para el comando de limpiar archivos temporales
@@ -314,6 +540,14 @@ namespace WassControlSys.ViewModels
         public ICommand RefreshBloatwareAppsCommand { get; private set; }
         public ICommand UpdatePrivacySettingCommand { get; private set; }
         public ICommand RefreshPrivacySettingsCommand { get; private set; }
+        public ICommand RefreshProcessesCommand { get; private set; }
+        public ICommand ReduceBackgroundProcessesCommand { get; private set; }
+        public ICommand SetProcessPriorityHighCommand { get; private set; }
+        public ICommand SetProcessPriorityNormalCommand { get; private set; }
+        public ICommand SetProcessPriorityBelowNormalCommand { get; private set; }
+        public ICommand KillProcessCommand { get; private set; }
+        public ICommand RefreshThermalCommand { get; private set; }
+        public ICommand RefreshDiskHealthCommand { get; private set; }
 
 
         // Método que se ejecuta cuando se invoca el comando CleanTempFilesCommand
@@ -327,7 +561,7 @@ namespace WassControlSys.ViewModels
                 CleanRecycleBin = CleanRecycleBin,
                 CleanBrowserCache = CleanBrowserCache,
                 CleanSystemTemp = CleanSystemTemp
-                // Add other options as they are implemented
+                // Añadir otras opciones a medida que se implementen
             };
 
             try
@@ -459,12 +693,105 @@ namespace WassControlSys.ViewModels
             await _dialogService.ShowMessage(message, "Reparador CHKDSK");
         }
 
+        private async Task ExecuteFlushDnsAsync()
+        {
+            if (IsBusy) return;
+            try
+            {
+                IsBusy = true;
+                _log?.Info("Ejecutando Flush DNS...");
+                var r = await Task.Run(() => _maintenance.FlushDns());
+                await _dialogService.ShowMessage(r.Message ?? "DNS Flushed.", "Optimización DNS");
+            }
+            catch (Exception ex)
+            {
+                _log?.Error("Error Flush DNS", ex);
+                await _dialogService.ShowMessage(ex.Message, "Error");
+            }
+            finally { IsBusy = false; }
+        }
+
+        private async Task ExecuteAnalyzeDiskAsync()
+        {
+            if (IsBusy) return;
+            try
+            {
+                IsBusy = true;
+                _log?.Info("Analizando Disco...");
+                var r = await Task.Run(() => _maintenance.AnalyzeDisk());
+                string msg = r.Message;
+                if (!string.IsNullOrEmpty(r.StandardOutput)) msg += "\n\n" + r.StandardOutput;
+                await _dialogService.ShowMessage(msg, "Análisis de Disco");
+            }
+            catch (Exception ex)
+            {
+                _log?.Error("Error Análisis Disco", ex);
+                await _dialogService.ShowMessage(ex.Message, "Error");
+            }
+            finally { IsBusy = false; }
+        }
+
+        private async Task ExecuteCleanPrefetchAsync()
+        {
+            if (IsBusy) return;
+            try
+            {
+                IsBusy = true;
+                _log?.Info("Limpiando Prefetch...");
+                var r = await Task.Run(() => _maintenance.CleanPrefetch());
+                await _dialogService.ShowMessage(r.Message, "Limpieza Prefetch");
+            }
+            catch (Exception ex)
+            {
+                _log?.Error("Error Prefetch", ex);
+                await _dialogService.ShowMessage(ex.Message, "Error");
+            }
+            finally { IsBusy = false; }
+        }
+
+        private async Task ExecuteRebuildSearchIndexAsync()
+        {
+             _log?.Info("Abriendo Reconstrucción de Índice...");
+             // No async wait needed for launching control panel usually
+             var r = _maintenance.RebuildSearchIndex();
+             if (!r.Started) await _dialogService.ShowMessage("No se pudo abrir el panel de opciones de indización.", "Error");
+        }
+
+        private async Task ExecuteResetNetworkAsync()
+        {
+             if (IsBusy) return;
+             bool confirm = await _dialogService.ShowConfirmation("Esto reiniciará sus adaptadores de red y puede perder la conexión temporalmente. ¿Continuar?", "Reiniciar Red");
+             if (!confirm) return;
+
+            try
+            {
+                IsBusy = true;
+                _log?.Info("Reiniciando Red...");
+                var r = await Task.Run(() => _maintenance.ResetNetwork());
+                await _dialogService.ShowMessage(r.Message ?? "Comandos de red ejecutados.", "Red Reiniciada");
+            }
+            catch (Exception ex)
+            {
+                _log?.Error("Error Reset Network", ex);
+                await _dialogService.ShowMessage(ex.Message, "Error");
+            }
+            finally { IsBusy = false; }
+        }
+
         private void UpdateSystemUsage()
         {
             var usage = _monitoringService.GetSystemUsage();
             CpuUsage = usage.CpuUsage;
             RamUsage = usage.RamUsage;
             DiskUsage = usage.DiskUsage;
+            if (AutoOptimizeRam && RamUsage >= RamThresholdPercent)
+            {
+                if ((DateTime.Now - _lastAutoRamOptimization) > TimeSpan.FromMinutes(5))
+                {
+                    _ = ExecuteOptimizeRamAsync();
+                    _lastAutoRamOptimization = DateTime.Now;
+                }
+            }
         }
 
         private async Task LoadSettingsAsync()
@@ -475,6 +802,9 @@ namespace WassControlSys.ViewModels
                 CurrentMode = s.SelectedMode;
                 RunOnStartup = s.RunOnStartup; // This triggers ToggleRunOnStartupAsync, careful not to loop or be redundant.
                 AccentColor = s.AccentColor;
+                AutoOptimizeRam = s.AutoOptimizeRam;
+                RamThresholdPercent = s.RamThresholdPercent;
+                SelectedLanguage = s.Language;
                 if (Enum.TryParse<AppSection>(s.CurrentSection, true, out var section))
                 {
                     CurrentSection = section;
@@ -497,7 +827,10 @@ namespace WassControlSys.ViewModels
                     SelectedMode = CurrentMode, 
                     CurrentSection = CurrentSection.ToString(),
                     RunOnStartup = RunOnStartup,
-                    AccentColor = AccentColor
+                    AccentColor = AccentColor,
+                    AutoOptimizeRam = AutoOptimizeRam,
+                    RamThresholdPercent = RamThresholdPercent,
+                    Language = SelectedLanguage
                 };
                 await _settings.SaveAsync(s);
             }
@@ -864,245 +1197,6 @@ namespace WassControlSys.ViewModels
 
         // ===== NEW OPTIMIZATION METHODS =====
         
-        private async Task ExecuteFlushDnsAsync()
-        {
-            if (IsBusy) return;
-            try
-            {
-                IsBusy = true;
-                _log?.Info("Limpiando caché DNS...");
-                
-                await Task.Run(() =>
-                {
-                    var psi = new System.Diagnostics.ProcessStartInfo
-                    {
-                        FileName = "ipconfig",
-                        Arguments = "/flushdns",
-                        UseShellExecute = false,
-                        RedirectStandardOutput = true,
-                        CreateNoWindow = true
-                    };
-                    using var process = System.Diagnostics.Process.Start(psi);
-                    process?.WaitForExit();
-                });
-                
-                await _dialogService.ShowMessage("Caché DNS limpiada correctamente.", "Éxito");
-            }
-            catch (Exception ex)
-            {
-                _log?.Error("Error limpiando DNS", ex);
-                await _dialogService.ShowMessage($"Error limpiando DNS: {ex.Message}", "Error");
-            }
-            finally
-            {
-                IsBusy = false;
-            }
-        }
 
-        private async Task ExecuteAnalyzeDiskAsync()
-        {
-            if (IsBusy) return;
-            
-            bool confirm = await _dialogService.ShowConfirmation(
-                "El análisis de disco puede tardar varios minutos. ¿Desea continuar?", 
-                "Confirmar Análisis");
-            if (!confirm) return;
-
-            try
-            {
-                IsBusy = true;
-                _log?.Info("Analizando disco C:...");
-                
-                await Task.Run(() =>
-                {
-                    var psi = new System.Diagnostics.ProcessStartInfo
-                    {
-                        FileName = "defrag",
-                        Arguments = "C: /A",
-                        UseShellExecute = false,
-                        RedirectStandardOutput = true,
-                        CreateNoWindow = true
-                    };
-                    using var process = System.Diagnostics.Process.Start(psi);
-                    process?.WaitForExit();
-                });
-                
-                await _dialogService.ShowMessage("Análisis de disco completado. Revise los logs del sistema para más detalles.", "Análisis Completado");
-            }
-            catch (Exception ex)
-            {
-                _log?.Error("Error analizando disco", ex);
-                await _dialogService.ShowMessage($"Error analizando disco: {ex.Message}", "Error");
-            }
-            finally
-            {
-                IsBusy = false;
-            }
-        }
-
-        private async Task ExecuteRebuildSearchIndexAsync()
-        {
-            if (IsBusy) return;
-            
-            bool confirm = await _dialogService.ShowConfirmation(
-                "Reconstruir el índice de búsqueda puede tardar varias horas y afectará el rendimiento del sistema. ¿Continuar?", 
-                "Confirmar Reconstrucción");
-            if (!confirm) return;
-
-            try
-            {
-                IsBusy = true;
-                _log?.Info("Reconstruyendo índice de búsqueda...");
-                
-                await Task.Run(() =>
-                {
-                    // Stop Windows Search service
-                    var stopPsi = new System.Diagnostics.ProcessStartInfo
-                    {
-                        FileName = "net",
-                        Arguments = "stop WSearch",
-                        UseShellExecute = true,
-                        Verb = "runas",
-                        CreateNoWindow = true
-                    };
-                    using (var stopProcess = System.Diagnostics.Process.Start(stopPsi))
-                    {
-                        stopProcess?.WaitForExit();
-                    }
-
-                    System.Threading.Thread.Sleep(2000);
-
-                    // Start Windows Search service
-                    var startPsi = new System.Diagnostics.ProcessStartInfo
-                    {
-                        FileName = "net",
-                        Arguments = "start WSearch",
-                        UseShellExecute = true,
-                        Verb = "runas",
-                        CreateNoWindow = true
-                    };
-                    using (var startProcess = System.Diagnostics.Process.Start(startPsi))
-                    {
-                        startProcess?.WaitForExit();
-                    }
-                });
-                
-                await _dialogService.ShowMessage("Servicio de búsqueda reiniciado. El índice se reconstruirá automáticamente.", "Éxito");
-            }
-            catch (Exception ex)
-            {
-                _log?.Error("Error reconstruyendo índice", ex);
-                await _dialogService.ShowMessage($"Error reconstruyendo índice: {ex.Message}\nPuede que necesite ejecutar la aplicación como administrador.", "Error");
-            }
-            finally
-            {
-                IsBusy = false;
-            }
-        }
-
-        private async Task ExecuteCleanPrefetchAsync()
-        {
-            if (IsBusy) return;
-            
-            bool confirm = await _dialogService.ShowConfirmation(
-                "¿Desea limpiar los archivos prefetch? Esto es seguro pero puede hacer que las aplicaciones tarden un poco más en iniciar la primera vez.", 
-                "Confirmar Limpieza");
-            if (!confirm) return;
-
-            try
-            {
-                IsBusy = true;
-                _log?.Info("Limpiando prefetch...");
-                
-                int filesDeleted = await Task.Run(() =>
-                {
-                    string prefetchPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Prefetch");
-                    int count = 0;
-                    
-                    if (Directory.Exists(prefetchPath))
-                    {
-                        foreach (var file in Directory.GetFiles(prefetchPath, "*.pf"))
-                        {
-                            try
-                            {
-                                File.Delete(file);
-                                count++;
-                            }
-                            catch { }
-                        }
-                    }
-                    return count;
-                });
-                
-                await _dialogService.ShowMessage($"Limpieza completada. {filesDeleted} archivos eliminados.", "Éxito");
-            }
-            catch (Exception ex)
-            {
-                _log?.Error("Error limpiando prefetch", ex);
-                await _dialogService.ShowMessage($"Error limpiando prefetch: {ex.Message}\nPuede que necesite ejecutar la aplicación como administrador.", "Error");
-            }
-            finally
-            {
-                IsBusy = false;
-            }
-        }
-
-        private async Task ExecuteResetNetworkAsync()
-        {
-            if (IsBusy) return;
-            
-            bool confirm = await _dialogService.ShowConfirmation(
-                "Esto reiniciará la configuración de red y puede desconectarlo temporalmente. ¿Continuar?", 
-                "Confirmar Reinicio de Red");
-            if (!confirm) return;
-
-            try
-            {
-                IsBusy = false;
-                _log?.Info("Reiniciando configuración de red...");
-                
-                await Task.Run(() =>
-                {
-                    // Reset Winsock
-                    var winsockPsi = new System.Diagnostics.ProcessStartInfo
-                    {
-                        FileName = "netsh",
-                        Arguments = "winsock reset",
-                        UseShellExecute = false,
-                        RedirectStandardOutput = true,
-                        CreateNoWindow = true
-                    };
-                    using (var process = System.Diagnostics.Process.Start(winsockPsi))
-                    {
-                        process?.WaitForExit();
-                    }
-
-                    // Reset IP
-                    var ipPsi = new System.Diagnostics.ProcessStartInfo
-                    {
-                        FileName = "netsh",
-                        Arguments = "int ip reset",
-                        UseShellExecute = false,
-                        RedirectStandardOutput = true,
-                        CreateNoWindow = true
-                    };
-                    using (var process = System.Diagnostics.Process.Start(ipPsi))
-                    {
-                        process?.WaitForExit();
-                    }
-                });
-                
-                await _dialogService.ShowMessage("Red reiniciada. Se recomienda reiniciar el sistema para aplicar todos los cambios.", "Éxito");
-            }
-            catch (Exception ex)
-            {
-                _log?.Error("Error reiniciando red", ex);
-                await _dialogService.ShowMessage($"Error reiniciando red: {ex.Message}", "Error");
-            }
-            finally
-            {
-                IsBusy = false;
-            }
-        }
     }
 }

@@ -23,11 +23,11 @@ namespace WassControlSys.Core
             {
                 var settings = new List<PrivacySetting>();
 
-                // Example: Telemetry
+                // Ejemplo: Telemetría
                 settings.Add(GetTelemetrySetting());
                 settings.Add(GetAdvertisingIdSetting());
 
-                // Add more settings here
+                // Añadir más configuraciones aquí
                 
                 return settings;
             });
@@ -43,7 +43,7 @@ namespace WassControlSys.Core
                 {
                     _log.Info($"Updating privacy setting '{setting.Name}' to '{newValue}'");
 
-                    // A warning for critical settings
+                    // Una advertencia para configuraciones críticas
                     if (setting.Type == PrivacySettingType.Telemetry && newValue == true)
                     {
                         bool confirm = await _dialogService.ShowConfirmation($"Habilitar la telemetría podría enviar datos de uso a Microsoft. ¿Está seguro?", "Confirmar");
@@ -60,7 +60,7 @@ namespace WassControlSys.Core
                         if (key != null)
                         {
                             key.SetValue(setting.RegistryValueName, newValue ? 1 : 0, RegistryValueKind.DWord);
-                            setting.CurrentValue = newValue; // Update model for UI
+                            setting.CurrentValue = newValue; // Actualizar modelo para la interfaz de usuario
                             _log.Info($"Privacy setting '{setting.Name}' updated successfully.");
                             return true;
                         }
@@ -79,8 +79,8 @@ namespace WassControlSys.Core
         private PrivacySetting GetTelemetrySetting()
         {
             string path = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Privacy";
-            string valueName = "AllowTelemetry"; // Simplified example
-            int currentValue = 1; // Default to on
+            string valueName = "AllowTelemetry"; // Declare valueName here
+            int currentValue = 1; // Por defecto activado
 
             try
             {
@@ -102,7 +102,7 @@ namespace WassControlSys.Core
                 Name = "Telemetría de Windows",
                 Description = "Controla la cantidad de datos de diagnóstico y uso enviados a Microsoft.",
                 CurrentValue = currentValue == 1,
-                RecommendedValue = false, // Recommend disabling for privacy
+                RecommendedValue = false, // Recomendar deshabilitar por privacidad
                 Type = PrivacySettingType.Telemetry,
                 RegistryPath = path,
                 RegistryValueName = valueName
@@ -112,8 +112,8 @@ namespace WassControlSys.Core
         private PrivacySetting GetAdvertisingIdSetting()
         {
             string path = @"SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo";
-            string valueName = "Enabled"; // Simplified example
-            int currentValue = 1; // Default to on
+            string valueName = "Enabled"; // Declare valueName here
+            int currentValue = 1; // Por defecto activado
 
             try
             {
@@ -135,7 +135,7 @@ namespace WassControlSys.Core
                 Name = "ID de Publicidad Personalizada",
                 Description = "Permite que las aplicaciones usen su actividad para mostrarle anuncios personalizados.",
                 CurrentValue = currentValue == 1,
-                RecommendedValue = false, // Recommend disabling for privacy
+                RecommendedValue = false, // Recomendar deshabilitar por privacidad
                 Type = PrivacySettingType.AdvertisingId,
                 RegistryPath = path,
                 RegistryValueName = valueName

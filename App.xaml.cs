@@ -20,9 +20,12 @@ namespace WassControlSys
 
         private void ConfigureServices(IServiceCollection services)
         {
-            // Register services
+            // Registrar servicios
             services.AddSingleton<IMonitoringService, MonitoringService>();
             services.AddSingleton<IPerformanceProfileService, PerformanceProfileService>();
+            services.AddSingleton<IProcessManagerService, ProcessManagerService>();
+            services.AddSingleton<ITemperatureMonitorService, TemperatureMonitorService>();
+            services.AddSingleton<IDiskHealthService, DiskHealthService>();
             services.AddSingleton<ISecurityService, SecurityService>();
             services.AddSingleton<ISettingsService, SettingsService>();
             services.AddSingleton<ILogService, FileLogService>();
@@ -33,16 +36,29 @@ namespace WassControlSys
             services.AddSingleton<IServiceOptimizerService, ServiceOptimizerService>();
             services.AddSingleton<IBloatwareService, BloatwareService>();
             services.AddSingleton<IPrivacyService, PrivacyService>();
+            services.AddSingleton<ILocalizationService, LocalizationService>();
 
-            // Register ViewModel
+            // Registrar ViewModel
             services.AddSingleton<MainViewModel>();
 
-            // Register MainWindow
+            // Registrar MainWindow
             services.AddSingleton<MainWindow>();
         }
 
         protected override void OnStartup(StartupEventArgs e)
         {
+            var settings = _serviceProvider.GetService<ISettingsService>();
+            var loc = _serviceProvider.GetService<ILocalizationService>();
+            try
+            {
+                var s = settings?.LoadAsync().Result;
+                if (s != null)
+                {
+                    loc?.SetLanguageAsync(s.Language).Wait();
+                    ChangeAccentColor(s.AccentColor);
+                }
+            }
+            catch { }
             var mainWindow = _serviceProvider.GetService<MainWindow>();
             mainWindow.DataContext = _serviceProvider.GetService<MainViewModel>();
             mainWindow.Show();
@@ -55,7 +71,7 @@ namespace WassControlSys
                 var color = (Color)ColorConverter.ConvertFromString(hexColor);
                 var solidBrush = new SolidColorBrush(color);
                 
-                // Simple hover calculation
+                // Cálculo simple para el efecto hover
                 byte r = (byte)Math.Min(255, color.R + 30);
                 byte g = (byte)Math.Min(255, color.G + 30);
                 byte b = (byte)Math.Min(255, color.B + 30);

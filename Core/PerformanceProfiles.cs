@@ -29,11 +29,73 @@ namespace WassControlSys.Core
         private const string BalancedGuid = "381b4222-f694-41f0-9685-ff5bb260df2e";      // Equilibrado
         private const string HighPerfGuid = "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c";       // Alto rendimiento
         private const string PowerSaverGuid = "a1841308-3541-4fab-bc81-f71556f20b4a";     // Ahorro de energía (referencia)
+        private readonly IProcessManagerService? _processManager;
+        private readonly IServiceOptimizerService? _serviceOptimizer;
+        private readonly ILogService? _log;
+
+        public PerformanceProfileService(IProcessManagerService? processManager = null, IServiceOptimizerService? serviceOptimizer = null, ILogService? log = null)
+        {
+            _processManager = processManager;
+            _serviceOptimizer = serviceOptimizer;
+            _log = log;
+        }
 
         public async Task<ApplyProfileResult> ApplyProfileAsync(PerformanceMode mode)
         {
-            // Por ahora, aplicamos el plan de energía como acción segura y visible.
-            return await Task.Run(() => TrySetPowerPlan(mode));
+            var power = await Task.Run(() => TrySetPowerPlan(mode));
+            try
+            {
+                switch (mode)
+                {
+                    case PerformanceMode.Gamer:
+                        if (_processManager != null)
+                            await _processManager.ReduceBackgroundProcessesAsync(ProcessPriorityClass.BelowNormal);
+                        if (_serviceOptimizer != null)
+                            await ApplyServiceAdjustmentsAsync(mode);
+                        break;
+                    case PerformanceMode.Oficina:
+                        // Mantener equilibrio, sin cambios agresivos
+                        if (_serviceOptimizer != null)
+                            await ApplyServiceAdjustmentsAsync(mode);
+                        break;
+                    case PerformanceMode.Dev:
+                        // Sin acciones adicionales por ahora
+                        if (_serviceOptimizer != null)
+                            await ApplyServiceAdjustmentsAsync(mode);
+                        break;
+                    default:
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                _log?.Warn($"Acciones adicionales de perfil fallaron: {ex.Message}");
+            }
+            return power;
+        }
+
+        private async Task ApplyServiceAdjustmentsAsync(PerformanceMode mode)
+        {
+            if (_serviceOptimizer == null) return;
+            switch (mode)
+            {
+                case PerformanceMode.Gamer:
+                    await _serviceOptimizer.SetServiceStartTypeAsync("SysMain", ServiceStartType.Manual);
+                    await _serviceOptimizer.StopServiceAsync("SysMain");
+                    await _serviceOptimizer.SetServiceStartTypeAsync("WSearch", ServiceStartType.Manual);
+                    await _serviceOptimizer.StopServiceAsync("WSearch");
+                    break;
+                case PerformanceMode.Oficina:
+                    await _serviceOptimizer.SetServiceStartTypeAsync("WSearch", ServiceStartType.Automatic);
+                    await _serviceOptimizer.StartServiceAsync("WSearch");
+                    await _serviceOptimizer.SetServiceStartTypeAsync("SysMain", ServiceStartType.Automatic);
+                    break;
+                case PerformanceMode.Dev:
+                    await _serviceOptimizer.SetServiceStartTypeAsync("WSearch", ServiceStartType.Manual);
+                    break;
+                default:
+                    break;
+            }
         }
 
         private ApplyProfileResult TrySetPowerPlan(PerformanceMode mode)

@@ -6,6 +6,6 @@ namespace WassControlSys.Models
         public string Publisher { get; set; }
         public string InstallLocation { get; set; }
         public string UninstallCommand { get; set; }
-        public bool IsSystemApp { get; set; } // To differentiate from user-installed apps
+        public bool IsSystemApp { get; set; } // Para diferenciar de las aplicaciones instaladas por el usuario
     }
 }

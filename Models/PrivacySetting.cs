@@ -6,7 +6,7 @@ namespace WassControlSys.Models
         public string Description { get; set; }
         public bool CurrentValue { get; set; }
         public bool RecommendedValue { get; set; } // Based on a "privacy-focused" profile
-        public PrivacySettingType Type { get; set; } // e.g., Telemetry, AdvertisingId, Location
+        public PrivacySettingType Type { get; set; } // por ejemplo, Telemetría, ID de publicidad, Ubicación
         public string RegistryPath { get; set; } // Where the setting is stored (for internal use)
         public string RegistryValueName { get; set; } // The name of the registry value
     }

@@ -57,7 +57,7 @@ namespace WassControlSys.Core
             }
             catch
             {
-                // Swallow to avoid crashing on IO errors
+                // Ignorar para evitar fallos por errores de E/S
             }
         }
     }
@@ -100,7 +100,7 @@ namespace WassControlSys.Core
             }
             catch
             {
-                // ignore logging failures
+                // ignorar fallos de registro
             }
         }
     }
@@ -113,14 +113,20 @@ namespace WassControlSys.Models
         public PerformanceMode SelectedMode { get; set; }
         public string CurrentSection { get; set; } = "Dashboard";
         public bool RunOnStartup { get; set; } = false;
-        public string AccentColor { get; set; } = "#3B82F6"; // Default Blue
+        public string AccentColor { get; set; } = "#3B82F6"; // Azul por defecto
+        public bool AutoOptimizeRam { get; set; } = false;
+        public double RamThresholdPercent { get; set; } = 85;
+        public string Language { get; set; } = "es";
 
         public static AppSettings Default() => new AppSettings
         {
             SelectedMode = PerformanceMode.General,
             CurrentSection = "Dashboard",
             RunOnStartup = false,
-            AccentColor = "#3B82F6"
+            AccentColor = "#3B82F6",
+            AutoOptimizeRam = false,
+            RamThresholdPercent = 85,
+            Language = "es"
         };
     }
 }

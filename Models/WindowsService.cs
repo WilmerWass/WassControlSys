@@ -9,7 +9,7 @@ namespace WassControlSys.Models
         public ServiceStartType StartType { get; set; }
         public bool CanBeStopped { get; set; }
         public bool CanBePaused { get; set; }
-        public string RecommendedAction { get; set; } // e.g., "Keep Automatic", "Set to Manual", "Disable"
+        public string RecommendedAction { get; set; } // por ejemplo, "Mantener Automático", "Establecer en Manual", "Deshabilitar"
     }
 
     public enum ServiceStatus

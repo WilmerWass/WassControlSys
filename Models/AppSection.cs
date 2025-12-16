@@ -11,6 +11,9 @@ namespace WassControlSys.Models
         Configuracion,
         Inicio,
         Servicios,
-        Desinstalador
+        Desinstalador,
+        Procesos,
+        Termico,
+        Discos
     }
 }
