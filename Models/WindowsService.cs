@@ -10,6 +10,8 @@ namespace WassControlSys.Models
         public bool CanBeStopped { get; set; }
         public bool CanBePaused { get; set; }
         public string RecommendedAction { get; set; } = string.Empty; // por ejemplo, "Mantener Automático", "Establecer en Manual", "Deshabilitar"
+        
+        public bool IsRunning => Status == ServiceStatus.Running;
     }
 
     public enum ServiceStatus

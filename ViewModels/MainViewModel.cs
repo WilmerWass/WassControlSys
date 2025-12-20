@@ -17,11 +17,18 @@ using System.Security.Principal; // Added for administrator check
 
 namespace WassControlSys.ViewModels
 {
+    public class CpuCoreInfo
+    {
+        public int Index { get; set; }
+        public double Usage { get; set; }
+    }
+
     public class MainViewModel : INotifyPropertyChanged
     {
         private readonly ISystemMaintenanceService _maintenance;
         private readonly IMonitoringService _monitoringService;
         private readonly DispatcherTimer _monitoringTimer;
+        private readonly DispatcherTimer _processTimer;
         private readonly IPerformanceProfileService _profiles;
         private readonly ISettingsService _settings;
         private readonly ILogService _log;
@@ -105,6 +112,19 @@ namespace WassControlSys.ViewModels
             ReduceBackgroundProcessesCommand = new RelayCommand(async _ => await ExecuteReduceBackgroundAsync());
             SetProcessPriorityHighCommand = new RelayCommand<ProcessInfoDto>(async p => await ExecuteSetProcessPriorityAsync(p, System.Diagnostics.ProcessPriorityClass.High));
             SetProcessPriorityNormalCommand = new RelayCommand<ProcessInfoDto>(async p => await ExecuteSetProcessPriorityAsync(p, System.Diagnostics.ProcessPriorityClass.Normal));
+            
+            OpenLogFolderCommand = new RelayCommand(_ => 
+            {
+                string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WassControlSys", "logs");
+                if (Directory.Exists(path))
+                {
+                    Process.Start("explorer.exe", path);
+                }
+                else
+                {
+                    _dialogService.ShowMessage("La carpeta de logs aún no existe.", "Información");
+                }
+            });
             SetProcessPriorityBelowNormalCommand = new RelayCommand<ProcessInfoDto>(async p => await ExecuteSetProcessPriorityAsync(p, System.Diagnostics.ProcessPriorityClass.BelowNormal));
             KillProcessCommand = new RelayCommand<ProcessInfoDto>(async p => await ExecuteKillProcessAsync(p));
             RefreshThermalCommand = new RelayCommand(async _ => await UpdateThermalAsync());
@@ -118,6 +138,9 @@ namespace WassControlSys.ViewModels
             RefreshBatteryCommand = new RelayCommand(async _ => await LoadBatteryInfoAsync());
             RefreshUpdatableAppsCommand = new RelayCommand(async _ => await LoadUpdatableAppsAsync());
             CancelUpdateSearchCommand = new RelayCommand(_ => { IsSearchingUpdates = false; StatusMessage = "Búsqueda cancelada"; });
+            ClearProcessSearchCommand = new RelayCommand(_ => ProcessSearchText = string.Empty);
+            ClearServiceSearchCommand = new RelayCommand(_ => ServiceSearchText = string.Empty);
+            ToggleServiceCommand = new RelayCommand<WindowsService>(async s => await ExecuteToggleServiceAsync(s));
 
 
             // Establecer modo por defecto antes de cargar ajustes
@@ -132,6 +155,15 @@ namespace WassControlSys.ViewModels
             _monitoringTimer.Tick += (s, e) => UpdateSystemUsage();
             _monitoringTimer.Tick += async (s, e) => await UpdateThermalAsync();
             _monitoringTimer.Start();
+
+            // Timer para procesos (30 seg)
+            _processTimer = new DispatcherTimer();
+            _processTimer.Interval = TimeSpan.FromSeconds(30);
+            _processTimer.Tick += (s, e) => _ = LoadProcessesAsync();
+            _processTimer.Start();
+
+            // Cargar info inicial
+            _ = LoadLastRestorePointAsync();
         }
 
         // Implementación de la interfaz INotifyPropertyChanged
@@ -227,8 +259,8 @@ namespace WassControlSys.ViewModels
             set { if (_diskUsage != value) { _diskUsage = value; OnPropertyChanged(); } }
         }
 
-        private ObservableCollection<double> _cpuPerCore = new();
-        public ObservableCollection<double> CpuPerCore
+        private ObservableCollection<CpuCoreInfo> _cpuPerCore = new();
+        public ObservableCollection<CpuCoreInfo> CpuPerCore
         {
             get => _cpuPerCore;
             set { if (_cpuPerCore != value) { _cpuPerCore = value; OnPropertyChanged(); } }
@@ -346,6 +378,14 @@ namespace WassControlSys.ViewModels
             set { if (_diskAnalysisResult != value) { _diskAnalysisResult = value; OnPropertyChanged(); } }
         }
 
+        private ObservableCollection<FolderSizeInfo> _diskAnalysisResultD = new();
+        public ObservableCollection<FolderSizeInfo> DiskAnalysisResultD
+        {
+            get => _diskAnalysisResultD;
+            set { if (_diskAnalysisResultD != value) { _diskAnalysisResultD = value; OnPropertyChanged(); } }
+        }
+
+
         private ObservableCollection<StartupItem> _startupItems = new();
         public ObservableCollection<StartupItem> StartupItems
         {
@@ -358,6 +398,41 @@ namespace WassControlSys.ViewModels
         {
             get => _windowsServices;
             set { if (_windowsServices != value) { _windowsServices = value; OnPropertyChanged(); } }
+        }
+
+        private ObservableCollection<WindowsService> _allWindowsServices = new();
+
+        private string _serviceSearchText = string.Empty;
+        public string ServiceSearchText
+        {
+            get => _serviceSearchText;
+            set
+            {
+                if (_serviceSearchText != value)
+                {
+                    _serviceSearchText = value;
+                    OnPropertyChanged();
+                    FilterServices();
+                }
+            }
+        }
+
+        private void FilterServices()
+        {
+            if (_allWindowsServices == null) return;
+
+            if (string.IsNullOrWhiteSpace(ServiceSearchText))
+            {
+                WindowsServices = new ObservableCollection<WindowsService>(_allWindowsServices);
+            }
+            else
+            {
+                var filtered = _allWindowsServices.Where(s => 
+                    (s.Name != null && s.Name.Contains(ServiceSearchText, StringComparison.OrdinalIgnoreCase)) ||
+                    (s.DisplayName != null && s.DisplayName.Contains(ServiceSearchText, StringComparison.OrdinalIgnoreCase))
+                ).ToList();
+                WindowsServices = new ObservableCollection<WindowsService>(filtered);
+            }
         }
 
         private ObservableCollection<BloatwareApp> _bloatwareApps = new();
@@ -404,6 +479,20 @@ namespace WassControlSys.ViewModels
             set { if (_thermalAlert != value) { _thermalAlert = value; OnPropertyChanged(); } }
         }
 
+        private string _lastRestorePointName = "Cargando...";
+        public string LastRestorePointName
+        {
+            get => _lastRestorePointName;
+            set { if (_lastRestorePointName != value) { _lastRestorePointName = value; OnPropertyChanged(); } }
+        }
+
+        private string _lastRestorePointDate = "";
+        public string LastRestorePointDate
+        {
+            get => _lastRestorePointDate;
+            set { if (_lastRestorePointDate != value) { _lastRestorePointDate = value; OnPropertyChanged(); } }
+        }
+
         private ObservableCollection<DiskHealthInfo> _diskHealth = new();
         public ObservableCollection<DiskHealthInfo> DiskHealth
         {
@@ -411,13 +500,32 @@ namespace WassControlSys.ViewModels
             set { if (_diskHealth != value) { _diskHealth = value; OnPropertyChanged(); } }
         }
 
+        private string _processSearchText = string.Empty;
+        public string ProcessSearchText
+        {
+            get => _processSearchText;
+            set
+            {
+                if (_processSearchText != value)
+                {
+                    _processSearchText = value;
+                    OnPropertyChanged();
+                    FilterProcesses();
+                }
+            }
+        }
+
+        private ObservableCollection<ProcessInfoDto> _allProcesses = new();
+        private ObservableCollection<ProcessInfoDto> _filteredProcesses = new();
+
         private async Task LoadProcessesAsync()
         {
             try
             {
                 IsBusy = true;
                 var list = await _processManagerService.GetProcessesAsync();
-                Processes = new ObservableCollection<ProcessInfoDto>(list);
+                _allProcesses = new ObservableCollection<ProcessInfoDto>(list);
+                FilterProcesses();
                 ProcessImpact = await _processManagerService.ComputeImpactAsync();
             }
             catch (Exception ex)
@@ -428,6 +536,24 @@ namespace WassControlSys.ViewModels
             finally
             {
                 IsBusy = false;
+            }
+        }
+
+        private void FilterProcesses()
+        {
+            if (_allProcesses == null) return;
+
+            if (string.IsNullOrWhiteSpace(ProcessSearchText))
+            {
+                Processes = new ObservableCollection<ProcessInfoDto>(_allProcesses);
+            }
+            else
+            {
+                var filtered = _allProcesses.Where(p => 
+                    (p.Name != null && p.Name.Contains(ProcessSearchText, StringComparison.OrdinalIgnoreCase)) ||
+                    p.Pid.ToString().Contains(ProcessSearchText)
+                ).ToList();
+                Processes = new ObservableCollection<ProcessInfoDto>(filtered);
             }
         }
 
@@ -633,6 +759,11 @@ namespace WassControlSys.ViewModels
 
         private DateTime _lastAutoRamOptimization = DateTime.MinValue;
 
+        // Variables para suavizar valores de red (promedio móvil)
+        private readonly Queue<double> _netRecvHistory = new Queue<double>();
+        private readonly Queue<double> _netSentHistory = new Queue<double>();
+        private const int NetworkSampleSize = 3; // Promedio de las últimas 3 lecturas
+
         public ICommand ChangeAccentColorCommand { get; private set; }
 
         // Propiedad para el comando de limpiar archivos temporales
@@ -661,6 +792,7 @@ namespace WassControlSys.ViewModels
         public ICommand ReduceBackgroundProcessesCommand { get; private set; }
         public ICommand SetProcessPriorityHighCommand { get; private set; }
         public ICommand SetProcessPriorityNormalCommand { get; private set; }
+        public ICommand OpenLogFolderCommand { get; private set; }
         public ICommand SetProcessPriorityBelowNormalCommand { get; private set; }
         public ICommand KillProcessCommand { get; private set; }
         public ICommand RefreshThermalCommand { get; private set; }
@@ -673,6 +805,9 @@ namespace WassControlSys.ViewModels
         public ICommand RefreshBatteryCommand { get; private set; }
         public ICommand RefreshUpdatableAppsCommand { get; private set; }
         public ICommand CancelUpdateSearchCommand { get; private set; }
+        public ICommand ClearProcessSearchCommand { get; private set; }
+        public ICommand ClearServiceSearchCommand { get; private set; }
+        public ICommand ToggleServiceCommand { get; private set; }
 
 
         // Método que se ejecuta cuando se invoca el comando CleanTempFilesCommand
@@ -735,7 +870,7 @@ namespace WassControlSys.ViewModels
         private async Task ExecuteRunSfc()
         {
             _log?.Info("Lanzando SFC /scannow");
-            var r = _maintenance.LaunchSystemFileChecker();
+            var r = await _maintenance.LaunchSystemFileCheckerAsync();
             _log?.Info($"SFC resultado: {r.Started} - {r.Message}. Exit Code: {r.ExitCode}");
             
             string message = r.Message ?? (r.Started ? "SFC iniciado." : "No se pudo iniciar SFC.");
@@ -753,7 +888,7 @@ namespace WassControlSys.ViewModels
         private async Task ExecuteRunDism()
         {
             _log?.Info("Lanzando DISM /RestoreHealth");
-            var r = _maintenance.LaunchDISMHealthRestore();
+            var r = await _maintenance.LaunchDISMHealthRestoreAsync();
             _log?.Info($"DISM resultado: {r.Started} - {r.Message}. Exit Code: {r.ExitCode}");
 
             string message = r.Message ?? (r.Started ? "DISM iniciado." : "No se pudo iniciar DISM.");
@@ -826,7 +961,7 @@ namespace WassControlSys.ViewModels
         private async Task ExecuteRunChkdsk()
         {
             _log?.Info("Lanzando CHKDSK");
-            var r = _maintenance.LaunchCHKDSK();
+            var r = await _maintenance.LaunchCHKDSKAsync();
             _log?.Info($"CHKDSK resultado: {r.Started} - {r.Message}. Exit Code: {r.ExitCode}");
 
             string message = r.Message ?? (r.Started ? "CHKDSK iniciado." : "No se pudo iniciar CHKDSK.");
@@ -847,9 +982,9 @@ namespace WassControlSys.ViewModels
             try
             {
                 IsBusy = true;
-                _log?.Info("Ejecutando Flush DNS...");
-                var r = await Task.Run(() => _maintenance.FlushDns());
-                await _dialogService.ShowMessage(r.Message ?? "DNS Flushed.", "Optimización DNS");
+                _log?.Info("Lanzando Flush DNS");
+                var r = await _maintenance.FlushDnsAsync();
+                await _dialogService.ShowMessage(r.Message ?? "Flush DNS completado.", "Red");
             }
             catch (Exception ex)
             {
@@ -865,11 +1000,9 @@ namespace WassControlSys.ViewModels
             try
             {
                 IsBusy = true;
-                _log?.Info("Analizando Disco...");
-                var r = await Task.Run(() => _maintenance.AnalyzeDisk());
-                string msg = r.Message ?? "Análisis completado.";
-                if (!string.IsNullOrEmpty(r.StandardOutput)) msg += "\n\n" + r.StandardOutput;
-                await _dialogService.ShowMessage(msg, "Análisis de Disco");
+                _log?.Info("Lanzando Análisis de Disco");
+                var r = await _maintenance.AnalyzeDiskAsync();
+                await _dialogService.ShowMessage(r.Message ?? "Análisis completado.", "Disco");
             }
             catch (Exception ex)
             {
@@ -892,9 +1025,9 @@ namespace WassControlSys.ViewModels
             try
             {
                 IsBusy = true;
-                _log?.Info("Limpiando Prefetch...");
-                var r = await Task.Run(() => _maintenance.CleanPrefetch());
-                await _dialogService.ShowMessage(r.Message ?? "Prefetch limpiado.", "Limpieza Prefetch");
+                _log?.Info("Lanzando Limpieza de Prefetch");
+                var r = await _maintenance.CleanPrefetchAsync();
+                await _dialogService.ShowMessage(r.Message ?? "Limpieza completada.", "Mantenimiento");
             }
             catch (Exception ex)
             {
@@ -906,9 +1039,9 @@ namespace WassControlSys.ViewModels
 
         private async Task ExecuteRebuildSearchIndexAsync()
         {
-             _log?.Info("Abriendo Reconstrucción de Índice...");
+             _log?.Info("Lanzando Reconstrucción de Índice de Búsqueda");
              // No async wait needed for launching control panel usually
-             var r = _maintenance.RebuildSearchIndex();
+             var r = await _maintenance.RebuildSearchIndexAsync();
              if (!r.Started) await _dialogService.ShowMessage("No se pudo abrir el panel de opciones de indización.", "Error");
         }
 
@@ -922,7 +1055,7 @@ namespace WassControlSys.ViewModels
             {
                 IsBusy = true;
                 _log?.Info("Reiniciando Red...");
-                var r = await Task.Run(() => _maintenance.ResetNetwork());
+                var r = await _maintenance.ResetNetworkAsync();
                 await _dialogService.ShowMessage(r.Message ?? "Comandos de red ejecutados.", "Red Reiniciada");
             }
             catch (Exception ex)
@@ -939,12 +1072,50 @@ namespace WassControlSys.ViewModels
             CpuUsage = usage.CpuUsage;
             RamUsage = usage.RamUsage;
             DiskUsage = usage.DiskUsage;
-            if (usage.CpuPerCore != null && usage.CpuPerCore.Length > 0)
+            
+            if (usage.CpuPerCore != null)
             {
-                CpuPerCore = new ObservableCollection<double>(usage.CpuPerCore);
+                // Actualizar colección existente para evitar parpadeos y crashes en la UI
+                if (CpuPerCore.Count != usage.CpuPerCore.Length)
+                {
+                    var list = new ObservableCollection<CpuCoreInfo>();
+                    for (int i = 0; i < usage.CpuPerCore.Length; i++)
+                    {
+                        list.Add(new CpuCoreInfo { Index = i, Usage = usage.CpuPerCore[i] });
+                    }
+                    CpuPerCore = list;
+                }
+                else
+                {
+                    for (int i = 0; i < usage.CpuPerCore.Length; i++)
+                    {
+                        if (Math.Abs(CpuPerCore[i].Usage - usage.CpuPerCore[i]) > 0.1)
+                        {
+                            // Reemplazar el objeto para notificar cambio, ya que CpuCoreInfo no implementa INPC
+                            // Esto es más seguro que modificar la propiedad sin notificación
+                            CpuPerCore[i] = new CpuCoreInfo { Index = i, Usage = usage.CpuPerCore[i] };
+                        }
+                    }
+                }
             }
-            NetSentMbps = usage.NetBytesSentPerSec / (1024.0 * 1024.0) * 8.0;
-            NetRecvMbps = usage.NetBytesReceivedPerSec / (1024.0 * 1024.0) * 8.0;
+            // Calcular valores instantáneos
+            double instantRecv = usage.NetBytesReceivedPerSec / (1024.0 * 1024.0) * 8.0;
+            double instantSent = usage.NetBytesSentPerSec / (1024.0 * 1024.0) * 8.0;
+            
+            // Agregar a historial
+            _netRecvHistory.Enqueue(instantRecv);
+            _netSentHistory.Enqueue(instantSent);
+            
+            // Mantener solo las últimas N lecturas
+            if (_netRecvHistory.Count > NetworkSampleSize)
+                _netRecvHistory.Dequeue();
+            if (_netSentHistory.Count > NetworkSampleSize)
+                _netSentHistory.Dequeue();
+            
+            // Calcular promedio móvil
+            NetRecvMbps = _netRecvHistory.Average();
+            NetSentMbps = _netSentHistory.Average();
+            
             ActiveTcpConnections = usage.ActiveTcpConnections;
             DiskReadsPerSec = usage.DiskReadsPerSec;
             DiskWritesPerSec = usage.DiskWritesPerSec;
@@ -1176,7 +1347,8 @@ namespace WassControlSys.ViewModels
                 IsBusy = true;
                 _log?.Info("Cargando servicios de Windows...");
                 var services = await _serviceOptimizerService.GetWindowsServicesAsync();
-                WindowsServices = new ObservableCollection<WindowsService>(services);
+                _allWindowsServices = new ObservableCollection<WindowsService>(services);
+                FilterServices();
                 _log?.Info($"Servicios de Windows cargados: {WindowsServices.Count}");
             }
             catch (Exception ex)
@@ -1224,6 +1396,19 @@ namespace WassControlSys.ViewModels
             finally
             {
                 IsBusy = false;
+            }
+        }
+
+        private async Task ExecuteToggleServiceAsync(WindowsService service)
+        {
+            if (service == null) return;
+            if (service.IsRunning)
+            {
+                await ExecuteStopServiceAsync(service.Name);
+            }
+            else
+            {
+                await ExecuteStartServiceAsync(service.Name);
             }
         }
 
@@ -1427,9 +1612,20 @@ namespace WassControlSys.ViewModels
                 IsBusy = true;
                 StatusMessage = "Creando punto de restauración...";
                 var r = await _restorePointService.CreateRestorePointAsync("Manual WassControlSys Checkpoint");
+                if (r.Success)
+                {
+                    await LoadLastRestorePointAsync();
+                }
                 await _dialogService.ShowMessage(r.Message ?? "Operación finalizada.", r.Success ? "Éxito" : "Error");
             }
             finally { IsBusy = false; StatusMessage = ""; }
+        }
+
+        private async Task LoadLastRestorePointAsync()
+        {
+            var info = await _restorePointService.GetLastRestorePointAsync();
+            LastRestorePointName = info.Name;
+            LastRestorePointDate = info.Date.HasValue ? info.Date.Value.ToString("g") : "Nunca";
         }
 
         private async Task LoadBatteryInfoAsync()
@@ -1523,7 +1719,16 @@ namespace WassControlSys.ViewModels
                 IsBusy = true;
                 StatusMessage = $"Analizando {path}...";
                 var items = await _diskAnalyzerService.AnalyzeDirectoryAsync(path);
-                DiskAnalysisResult = new ObservableCollection<FolderSizeInfo>(items);
+                
+                // Actualizar la propiedad correcta según el disco
+                if (path.StartsWith("D:", StringComparison.OrdinalIgnoreCase))
+                {
+                    DiskAnalysisResultD = new ObservableCollection<FolderSizeInfo>(items);
+                }
+                else
+                {
+                    DiskAnalysisResult = new ObservableCollection<FolderSizeInfo>(items);
+                }
             }
             catch (Exception ex)
             {

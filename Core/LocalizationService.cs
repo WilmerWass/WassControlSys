@@ -15,8 +15,16 @@ namespace WassControlSys.Core
                 try
                 {
                     string lang = (language ?? "es").ToLowerInvariant();
-                    string path = lang.StartsWith("en") ? "Resources/Strings.en.xaml" : "Resources/Strings.es.xaml";
-                    var dict = new ResourceDictionary { Source = new Uri(path, UriKind.Relative) };
+                    string path = lang.StartsWith("en") ? "Resources/Strings.en.xaml" : (lang.StartsWith("pt") ? "Resources/Strings.pt.xaml" : "Resources/Strings.es.xaml");
+                    ResourceDictionary dict;
+                    try
+                    {
+                        dict = new ResourceDictionary { Source = new Uri(path, UriKind.Relative) };
+                    }
+                    catch
+                    {
+                        dict = new ResourceDictionary { Source = new Uri("Resources/Strings.es.xaml", UriKind.Relative) };
+                    }
 
                     ResourceDictionary? existing = null;
                     foreach (var md in Application.Current.Resources.MergedDictionaries)

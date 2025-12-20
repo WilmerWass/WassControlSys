@@ -15,20 +15,29 @@ namespace WassControlSys.Core
                 var list = new List<DiskHealthInfo>();
                 try
                 {
-                    using var drives = new System.Management.ManagementObjectSearcher("SELECT DeviceID, Model, SerialNumber FROM Win32_DiskDrive");
+                    var smartEntries = GetSmartEntries();
+                    using var drives = new System.Management.ManagementObjectSearcher("SELECT DeviceID, Model, SerialNumber, PNPDeviceID, Index, Size FROM Win32_DiskDrive");
                     foreach (var d in drives.Get())
                     {
                         var id = d["DeviceID"]?.ToString() ?? "";
                         var model = d["Model"]?.ToString() ?? "";
                         var serial = d["SerialNumber"]?.ToString() ?? "";
-                        var status = GetSmartStatus(id);
+                        var pnpDeviceId = d["PNPDeviceID"]?.ToString();
+                        int? index = null;
+                        try { if (d["Index"] != null) index = Convert.ToInt32(d["Index"]); } catch { }
+                        long? sizeBytes = null;
+                        try { if (d["Size"] != null) sizeBytes = Convert.ToInt64(d["Size"]); } catch { }
+
+                        var status = GetSmartStatus(smartEntries, index, pnpDeviceId);
                         list.Add(new DiskHealthInfo
                         {
                             DeviceId = id,
                             Model = model,
                             Serial = serial,
+                            Capacity = sizeBytes.HasValue ? FormatBytes(sizeBytes.Value) : "",
                             SmartOk = status.HasValue && status.Value,
-                            SmartStatusKnown = status.HasValue
+                            SmartStatusKnown = status.HasValue,
+                            SmartStatus = status.HasValue ? (status.Value ? "OK" : "FALLA") : "N/D"
                         });
                     }
                 }
@@ -37,29 +46,82 @@ namespace WassControlSys.Core
             });
         }
 
-        private static bool? GetSmartStatus(string deviceId)
+        private static List<(string InstanceName, bool? SmartOk)> GetSmartEntries()
         {
             try
             {
                 using var searcher = new System.Management.ManagementObjectSearcher(@"root\WMI", "SELECT PredictFailure, InstanceName FROM MSStorageDriver_FailurePredictStatus");
+                var list = new List<(string InstanceName, bool? SmartOk)>();
                 foreach (var mo in searcher.Get())
                 {
                     var instance = mo["InstanceName"]?.ToString() ?? "";
-                    if (!string.IsNullOrEmpty(deviceId) && instance.Contains(deviceId, StringComparison.OrdinalIgnoreCase))
+                    bool? ok = null;
+                    try
                     {
                         var pf = mo["PredictFailure"];
-                        if (pf == null) return null;
-                        int v = Convert.ToInt32(pf);
-                        return v == 0;
+                        if (pf != null) ok = Convert.ToInt32(pf) == 0;
                     }
+                    catch { }
+                    list.Add((instance, ok));
                 }
-                return null;
+                return list;
             }
             catch
             {
-                return null;
+                return new List<(string InstanceName, bool? SmartOk)>();
             }
+        }
+
+        private static bool? GetSmartStatus(List<(string InstanceName, bool? SmartOk)> entries, int? diskIndex, string? pnpDeviceId)
+        {
+            try
+            {
+                if (entries.Count == 0) return null;
+
+                if (diskIndex.HasValue)
+                {
+                    string suffix = "_" + diskIndex.Value.ToString();
+                    foreach (var e in entries)
+                    {
+                        if (e.InstanceName.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+                        {
+                            return e.SmartOk;
+                        }
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(pnpDeviceId))
+                {
+                    string pnpNorm = NormalizeForMatch(pnpDeviceId);
+                    foreach (var e in entries)
+                    {
+                        if (NormalizeForMatch(e.InstanceName).Contains(pnpNorm, StringComparison.OrdinalIgnoreCase))
+                        {
+                            return e.SmartOk;
+                        }
+                    }
+                }
+            }
+            catch { }
+            return null;
+        }
+
+        private static string NormalizeForMatch(string s)
+        {
+            return new string(s.Where(char.IsLetterOrDigit).ToArray());
+        }
+
+        private static string FormatBytes(long bytes)
+        {
+            string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+            double len = bytes;
+            int order = 0;
+            while (len >= 1024 && order < sizes.Length - 1)
+            {
+                order++;
+                len = len / 1024;
+            }
+            return $"{len:0.##} {sizes[order]}";
         }
     }
 }
-

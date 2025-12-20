@@ -55,7 +55,8 @@ namespace WassControlSys.Core
 
         private bool CheckAntivirus(out string name)
         {
-            name = "No detectado";
+            var detectedAVs = new System.Collections.Generic.List<string>();
+            bool anyActive = false;
             try
             {
                 // WMI query to SecurityCenter2
@@ -63,18 +64,19 @@ namespace WassControlSys.Core
                 {
                     foreach (var result in searcher.Get())
                     {
-                        name = result["displayName"]?.ToString() ?? "Desconocido";
+                        string avName = result["displayName"]?.ToString() ?? "Desconocido";
+                        detectedAVs.Add(avName);
                         
-                        // productState is a bitmask. A state of 266240 (0x41000) is ON. A state of 262144 (0x40000) is OFF.
-                        // The 12th bit (0x1000) often indicates enabled status.
                         if (result["productState"] != null)
                         {
                             if (int.TryParse(result["productState"].ToString(), out int state))
                             {
-                                // Check if the second byte from the right is 16 (0x10), which means enabled and up to date.
-                                if ((state & 0xFF00) == 0x1000)
+                                // The state is a bitmask. The second byte (from low to high) defines the state.
+                                // 0x10 = ON, 0x11 = OFF, 0x00 = ?
+                                // A common check is (state & 0x1000) != 0 for enabled.
+                                if ((state & 0x1000) != 0)
                                 {
-                                    return true; // Found an active and up-to-date AV
+                                    anyActive = true;
                                 }
                             }
                         }
@@ -83,10 +85,17 @@ namespace WassControlSys.Core
             }
             catch
             {
-                // WMI query might fail on some systems. Silently fail for now.
-                // _log.Warn("Could not query WMI for Antivirus status.", ex);
+                // WMI query might fail on some systems.
             }
-            return false; // No active AV found
+
+            if (detectedAVs.Count > 0)
+            {
+                name = string.Join(" + ", detectedAVs);
+                return anyActive;
+            }
+
+            name = "No detectado";
+            return false;
         }
 
         private bool CheckFirewall()
@@ -102,7 +111,7 @@ namespace WassControlSys.Core
                         {
                              if (int.TryParse(result["productState"].ToString(), out int state))
                             {
-                                if ((state & 0xFF00) == 0x1000)
+                                if ((state & 0x1000) != 0)
                                 {
                                     return true; // Found an active Firewall
                                 }

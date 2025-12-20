@@ -256,26 +256,31 @@ namespace WassControlSys.Core
             }
         }
 
-        public ProcessLaunchResult FlushDns()
+        public async Task<ProcessLaunchResult> FlushDnsAsync()
         {
-            return LaunchElevated("cmd.exe", "/c ipconfig /flushdns");
+            return await Task.Run(() => LaunchElevated("cmd.exe", "/c ipconfig /flushdns"));
         }
 
-        public ProcessLaunchResult AnalyzeDisk()
+        public async Task<ProcessLaunchResult> AnalyzeDiskAsync()
         {
-            string? sysDrive = Path.GetPathRoot(Environment.SystemDirectory);
-            if (string.IsNullOrEmpty(sysDrive))
+            return await Task.Run(() =>
             {
-                return new ProcessLaunchResult { Started = false, Message = "No se pudo determinar la unidad del sistema." };
-            }
-            // /A = Analizar, /V = Verbose
-            return LaunchElevated("cmd.exe", $"/c defrag {sysDrive.TrimEnd('\\')} /A /V");
+                string? sysDrive = Path.GetPathRoot(Environment.SystemDirectory);
+                if (string.IsNullOrEmpty(sysDrive))
+                {
+                    return new ProcessLaunchResult { Started = false, Message = "No se pudo determinar la unidad del sistema." };
+                }
+                // /A = Analizar, /V = Verbose
+                return LaunchElevated("cmd.exe", $"/c defrag {sysDrive.TrimEnd('\\')} /A /V");
+            });
         }
 
-        public ProcessLaunchResult CleanPrefetch()
+        public async Task<ProcessLaunchResult> CleanPrefetchAsync()
         {
             // Requiere Admin. Intentamos borrar archivos en C:\Windows\Prefetch
-            var result = new ProcessLaunchResult { Started = true };
+            return await Task.Run(() =>
+            {
+                var result = new ProcessLaunchResult { Started = true };
             try
             {
                 string prefetchPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Prefetch");
@@ -311,18 +316,19 @@ namespace WassControlSys.Core
                 result.StandardError = ex.ToString();
             }
             return result;
+            });
         }
 
-        public ProcessLaunchResult RebuildSearchIndex()
+        public async Task<ProcessLaunchResult> RebuildSearchIndexAsync()
         {
             // La forma segura es abrir el panel de control
-            return LaunchElevated("control.exe", "srchadmin.dll");
+            return await Task.Run(() => LaunchElevated("control.exe", "srchadmin.dll"));
         }
 
-        public ProcessLaunchResult ResetNetwork()
+        public async Task<ProcessLaunchResult> ResetNetworkAsync()
         {
             // Ejecutar una secuencia de comandos de red
-            return LaunchElevated("cmd.exe", "/c ipconfig /release && ipconfig /renew && ipconfig /flushdns && netsh int ip reset && netsh winsock reset");
+            return await Task.Run(() => LaunchElevated("cmd.exe", "/c ipconfig /release && ipconfig /renew && ipconfig /flushdns && netsh int ip reset && netsh winsock reset"));
         }
 
         public bool IsAdministrator()
@@ -332,27 +338,31 @@ namespace WassControlSys.Core
             return principal.IsInRole(WindowsBuiltInRole.Administrator);
         }
 
-        public ProcessLaunchResult LaunchSystemFileChecker()
+        public async Task<ProcessLaunchResult> LaunchSystemFileCheckerAsync()
         {
             // sfc /scannow debe ejecutarse con privilegios elevados; abrimos una consola elevada si no somos administradores
-            return LaunchElevated("cmd.exe", "/c sfc /scannow");
+            return await Task.Run(() => LaunchElevated("cmd.exe", "/c sfc /scannow"));
         }
 
-        public ProcessLaunchResult LaunchDISMHealthRestore()
+        public async Task<ProcessLaunchResult> LaunchDISMHealthRestoreAsync()
         {
             // Restauración de salud de DISM
-            return LaunchElevated("cmd.exe", "/c DISM /Online /Cleanup-Image /RestoreHealth");
+            return await Task.Run(() => LaunchElevated("cmd.exe", "/c DISM /Online /Cleanup-Image /RestoreHealth"));
         }
 
-        public ProcessLaunchResult LaunchCHKDSK()
+        public async Task<ProcessLaunchResult> LaunchCHKDSKAsync()
         {
             // Programar chkdsk en el próximo arranque para la unidad del sistema
-            string? sysDrive = Path.GetPathRoot(Environment.SystemDirectory);
-            if (string.IsNullOrEmpty(sysDrive))
+            return await Task.Run(() =>
             {
-                return new ProcessLaunchResult { Started = false, Message = "No se pudo determinar la unidad del sistema." };
-            }
-            return LaunchElevated("cmd.exe", $"/c chkdsk {sysDrive.TrimEnd('\\')} /F /R");
+                string? sysDrive = Path.GetPathRoot(Environment.SystemDirectory);
+                if (string.IsNullOrEmpty(sysDrive))
+                {
+                    return new ProcessLaunchResult { Started = false, Message = "No se pudo determinar la unidad del sistema." };
+                }
+                // Usamos echo Y | para confirmar automáticamente la programación del análisis en el próximo reinicio
+                return LaunchElevated("cmd.exe", $"/c echo Y | chkdsk {sysDrive.TrimEnd('\\')} /F /R");
+            });
         }
 
         private ProcessLaunchResult LaunchElevated(string fileName, string arguments)

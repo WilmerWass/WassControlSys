@@ -39,7 +39,10 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel>
-                        <TextBlock Text="{DynamicResource Settings_DarkMode}" Foreground="{DynamicResource TextBrush}" FontSize="15" Margin="0,0,0,5"/>
+                        <StackPanel Orientation="Horizontal">
+                           <TextBlock Text="{DynamicResource Settings_DarkMode}" Foreground="{DynamicResource TextBrush}" FontSize="15" Margin="0,0,5,5"/>
+                           <TextBlock Text="☀️/🌙" FontSize="14" Foreground="{DynamicResource TextBrush}"/>
+                        </StackPanel>
                         <TextBlock Text="{DynamicResource Settings_DarkMode_Desc}" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="13"/>
                     </StackPanel>
                     <ToggleButton Grid.Column="1" IsChecked="{Binding IsDarkMode}" VerticalAlignment="Center" Style="{StaticResource ToggleSwitchStyle}"/>
@@ -105,16 +108,35 @@
                 </StackPanel>
 
                 <!-- Language -->
-                <TextBlock Text="{DynamicResource Settings_Language}" Foreground="{DynamicResource TextBrush}" FontSize="15" Margin="0,20,0,10"/>
-                <ComboBox SelectedValue="{Binding SelectedLanguage}" SelectedValuePath="Tag" Width="200">
-                    <ComboBoxItem Content="{DynamicResource Language_Spanish}" Tag="es"/>
-                    <ComboBoxItem Content="{DynamicResource Language_English}" Tag="en"/>
-                    <ComboBox.ItemContainerStyle>
-                        <Style TargetType="ComboBoxItem">
-                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                        </Style>
-                    </ComboBox.ItemContainerStyle>
-                </ComboBox>
+                <Grid Margin="0,20,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="{DynamicResource Settings_Language}" Foreground="{DynamicResource TextBrush}" FontSize="15" Margin="0,0,0,5"/>
+                        <TextBlock Text="Los idiomas al momento de elegirse deben ser visible el texto para saber cual es y debe estar de acuerdo a ltema elegido" 
+                                   Foreground="{DynamicResource SecondaryTextBrush}" 
+                                   FontSize="12" 
+                                   FontStyle="Italic"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <ComboBox Grid.Column="1" SelectedValue="{Binding SelectedLanguage}" SelectedValuePath="Tag" Width="200" VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}" Background="{DynamicResource SurfaceBrush}">
+                        <ComboBoxItem Content="ESPAÑOL" Tag="es" Foreground="{DynamicResource TextBrush}"/>
+                        <ComboBoxItem Content="INGLÉS" Tag="en" Foreground="{DynamicResource TextBrush}"/>
+                        <ComboBoxItem Content="PORTUGUÉS" Tag="pt" Foreground="{DynamicResource TextBrush}"/>
+                        <ComboBox.ItemContainerStyle>
+                            <Style TargetType="ComboBoxItem">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                <Setter Property="Padding" Value="10,5"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Style>
+                        </ComboBox.ItemContainerStyle>
+                    </ComboBox>
+                </Grid>
+
+                <TextBlock Text="Diagnóstico" Foreground="{DynamicResource TextBrush}" FontSize="15" Margin="0,20,0,10"/>
+                <Button Content="Abrir Carpeta de Logs" Command="{Binding OpenLogFolderCommand}" Style="{StaticResource SecondaryButtonStyle}" HorizontalAlignment="Left"/>
             </StackPanel>
         </Border>
     </StackPanel>

@@ -57,5 +57,61 @@ namespace WassControlSys.Core
                 }
             });
         }
+        public async Task<(string Name, DateTime? Date)> GetLastRestorePointAsync()
+        {
+            return await Task.Run(() =>
+            {
+                try
+                {
+                    var mScope = new ManagementScope("\\\\.\\root\\default");
+                    var query = new SelectQuery("SELECT * FROM SystemRestore");
+                    using (var searcher = new ManagementObjectSearcher(mScope, query))
+                    {
+                        ManagementObject? latest = null;
+                        foreach (ManagementObject rp in searcher.Get())
+                        {
+                            if (latest == null)
+                            {
+                                latest = rp;
+                                continue;
+                            }
+
+                            string? latestDateStr = latest["CreationTime"]?.ToString();
+                            string? currentDateStr = rp["CreationTime"]?.ToString();
+
+                            if (latestDateStr != null && currentDateStr != null)
+                            {
+                                if (string.Compare(currentDateStr, latestDateStr) > 0)
+                                {
+                                    latest = rp;
+                                }
+                            }
+                        }
+
+                        if (latest != null)
+                        {
+                            string name = latest["Description"]?.ToString() ?? "Sin nombre";
+                            string? dateStr = latest["CreationTime"]?.ToString();
+                            DateTime? date = null;
+                            if (dateStr != null)
+                            {
+                                try
+                                {
+                                    // WMI dates are in format yyyymmddHHMMSS.mmmmmmsUUU
+                                    date = ManagementDateTimeConverter.ToDateTime(dateStr);
+                                }
+                                catch { }
+                            }
+                            return (name, date);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _log.Error("Error obteniendo último punto de restauración", ex);
+                }
+                return ("No detectado", null);
+            });
+        }
     }
 }

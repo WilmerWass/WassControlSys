@@ -14,9 +14,19 @@ namespace WassControlSys
 
         public App()
         {
+            DispatcherUnhandledException += App_DispatcherUnhandledException;
             var serviceCollection = new ServiceCollection();
             ConfigureServices(serviceCollection);
             _serviceProvider = serviceCollection.BuildServiceProvider();
+        }
+
+        private void App_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+        {
+            var log = _serviceProvider?.GetService<ILogService>();
+            log?.Error("Excepción NO controlada en UI Dispatcher", e.Exception);
+            // Opcional: Mostrar mensaje al usuario
+            // MessageBox.Show($"Error crítico: {e.Exception.Message}", "Error Inesperado", MessageBoxButton.OK, MessageBoxImage.Error);
+            e.Handled = true; // Evitar cierre si es posible, aunque riesgoso
         }
 
         private void ConfigureServices(IServiceCollection services)
