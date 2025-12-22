@@ -121,17 +121,17 @@
                                    FontStyle="Italic"
                                    TextWrapping="Wrap"/>
                     </StackPanel>
-                    <ComboBox Grid.Column="1" SelectedValue="{Binding SelectedLanguage}" SelectedValuePath="Tag" Width="200" VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}" Background="{DynamicResource SurfaceBrush}">
-                        <ComboBoxItem Content="ESPAÑOL" Tag="es" Foreground="{DynamicResource TextBrush}"/>
-                        <ComboBoxItem Content="INGLÉS" Tag="en" Foreground="{DynamicResource TextBrush}"/>
-                        <ComboBoxItem Content="PORTUGUÉS" Tag="pt" Foreground="{DynamicResource TextBrush}"/>
+                    <ComboBox Grid.Column="1" SelectedValue="{Binding SelectedLanguage}" SelectedValuePath="Tag" Width="200" VerticalAlignment="Center">
                         <ComboBox.ItemContainerStyle>
-                            <Style TargetType="ComboBoxItem">
+                            <Style TargetType="ComboBoxItem" BasedOn="{StaticResource {x:Type ComboBoxItem}}">
                                 <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                                 <Setter Property="Padding" Value="10,5"/>
                                 <Setter Property="FontWeight" Value="SemiBold"/>
                             </Style>
                         </ComboBox.ItemContainerStyle>
+                        <ComboBoxItem Content="ESPAÑOL" Tag="es"/>
+                        <ComboBoxItem Content="INGLÉS" Tag="en"/>
+                        <ComboBoxItem Content="PORTUGUÉS" Tag="pt"/>
                     </ComboBox>
                 </Grid>
 

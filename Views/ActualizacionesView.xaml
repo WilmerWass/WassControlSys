@@ -21,10 +21,36 @@
                         <DataGridTextColumn Header="Nombre" Binding="{Binding Name}" Width="*"/>
                         <DataGridTextColumn Header="Versión Actual" Binding="{Binding CurrentVersion}" Width="150"/>
                         <DataGridTextColumn Header="Nueva Versión" Binding="{Binding AvailableVersion}" Width="150"/>
-                        <DataGridTemplateColumn Header="Acción" Width="100">
+                        <DataGridTemplateColumn Header="Acción" Width="150">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <Button Content="Actualizar" Command="{Binding DataContext.UpdateAppCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding Id}" Padding="5,2"/>
+                                    <Grid>
+                                        <Button Content="Actualizar" Command="{Binding DataContext.UpdateAppCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" CommandParameter="{Binding Id}" Padding="5,2">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsUpdating}" Value="True">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <StackPanel.Style>
+                                                <Style TargetType="StackPanel">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsUpdating}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </StackPanel.Style>
+                                            <TextBlock Text="{Binding UpdateStatusMessage}" FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                            <ProgressBar Value="{Binding UpdateProgress}" Maximum="100" Height="6" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </Grid>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>

@@ -141,6 +141,8 @@ namespace WassControlSys.ViewModels
             ClearProcessSearchCommand = new RelayCommand(_ => ProcessSearchText = string.Empty);
             ClearServiceSearchCommand = new RelayCommand(_ => ServiceSearchText = string.Empty);
             ToggleServiceCommand = new RelayCommand<WindowsService>(async s => await ExecuteToggleServiceAsync(s));
+            FreeUpDiskSpaceCommand = new RelayCommand(_ => ExecuteFreeUpDiskSpace(), _ => SelectedDriveForCleanup != null);
+
 
 
             // Establecer modo por defecto antes de cargar ajustes
@@ -164,6 +166,25 @@ namespace WassControlSys.ViewModels
 
             // Cargar info inicial
             _ = LoadLastRestorePointAsync();
+            LoadDiskAnalyzers();
+        }
+
+        private void LoadDiskAnalyzers()
+        {
+            var analyzers = new ObservableCollection<DiskAnalyzerViewModel>();
+            try
+            {
+                var drives = DriveInfo.GetDrives().Where(d => d.IsReady && d.DriveType == DriveType.Fixed);
+                foreach (var drive in drives)
+                {
+                    analyzers.Add(new DiskAnalyzerViewModel { DriveLetter = drive.Name });
+                }
+            }
+            catch (Exception ex)
+            {
+                _log?.Error("Error loading disk analyzers", ex);
+            }
+            DiskAnalyzers = analyzers;
         }
 
         // Implementación de la interfaz INotifyPropertyChanged
@@ -364,6 +385,21 @@ namespace WassControlSys.ViewModels
             set { if (_updatableApps != value) { _updatableApps = value; OnPropertyChanged(); } }
         }
 
+        private ObservableCollection<DiskAnalyzerViewModel> _diskAnalyzers = new();
+        public ObservableCollection<DiskAnalyzerViewModel> DiskAnalyzers
+        {
+            get => _diskAnalyzers;
+            set { _diskAnalyzers = value; OnPropertyChanged(); }
+        }
+
+        private DiskAnalyzerViewModel? _selectedDriveForCleanup;
+        public DiskAnalyzerViewModel? SelectedDriveForCleanup
+        {
+            get => _selectedDriveForCleanup;
+            set { _selectedDriveForCleanup = value; OnPropertyChanged(); }
+        }
+
+
         private bool _isSearchingUpdates;
         public bool IsSearchingUpdates
         {
@@ -371,19 +407,29 @@ namespace WassControlSys.ViewModels
             set { if (_isSearchingUpdates != value) { _isSearchingUpdates = value; OnPropertyChanged(); } }
         }
 
-        private ObservableCollection<FolderSizeInfo> _diskAnalysisResult = new();
-        public ObservableCollection<FolderSizeInfo> DiskAnalysisResult
+
+
+        private bool _isExportingDrivers;
+        public bool IsExportingDrivers
         {
-            get => _diskAnalysisResult;
-            set { if (_diskAnalysisResult != value) { _diskAnalysisResult = value; OnPropertyChanged(); } }
+            get => _isExportingDrivers;
+            set { if (_isExportingDrivers != value) { _isExportingDrivers = value; OnPropertyChanged(); } }
         }
 
-        private ObservableCollection<FolderSizeInfo> _diskAnalysisResultD = new();
-        public ObservableCollection<FolderSizeInfo> DiskAnalysisResultD
+        private int _driverExportProgress;
+        public int DriverExportProgress
         {
-            get => _diskAnalysisResultD;
-            set { if (_diskAnalysisResultD != value) { _diskAnalysisResultD = value; OnPropertyChanged(); } }
+            get => _driverExportProgress;
+            set { if (_driverExportProgress != value) { _driverExportProgress = value; OnPropertyChanged(); } }
         }
+
+        private string _driverExportStatusMessage = "";
+        public string DriverExportStatusMessage
+        {
+            get => _driverExportStatusMessage;
+            set { if (_driverExportStatusMessage != value) { _driverExportStatusMessage = value; OnPropertyChanged(); } }
+        }
+
 
 
         private ObservableCollection<StartupItem> _startupItems = new();
@@ -808,6 +854,7 @@ namespace WassControlSys.ViewModels
         public ICommand ClearProcessSearchCommand { get; private set; }
         public ICommand ClearServiceSearchCommand { get; private set; }
         public ICommand ToggleServiceCommand { get; private set; }
+        public ICommand FreeUpDiskSpaceCommand { get; private set; }
 
 
         // Método que se ejecuta cuando se invoca el comando CleanTempFilesCommand
@@ -1666,15 +1713,50 @@ namespace WassControlSys.ViewModels
 
         private async Task ExecuteUpdateAppAsync(string id)
         {
-            if (string.IsNullOrEmpty(id) || IsBusy) return;
+            if (string.IsNullOrEmpty(id)) return;
+
+            var appToUpdate = UpdatableApps.FirstOrDefault(app => app.Id == id);
+            if (appToUpdate == null || appToUpdate.IsUpdating) return;
+
+            // Check for confirmation
+            if (!appToUpdate.Source.Equals("msstore", StringComparison.OrdinalIgnoreCase))
+            {
+                bool confirm = await _dialogService.ShowConfirmation($"¿Desea actualizar '{appToUpdate.Name}'? Esta aplicación no es de la Microsoft Store.", "Confirmar Actualización");
+                if (!confirm) return;
+            }
+
             try
             {
-                IsBusy = true;
-                StatusMessage = $"Actualizando {id}...";
-                bool success = await _wingetService.UpdateAppAsync(id);
-                if (success) await LoadUpdatableAppsAsync();
+                appToUpdate.IsUpdating = true;
+                appToUpdate.UpdateStatusMessage = "Iniciando...";
+
+                var progress = new Progress<(int percentage, string message)>(report =>
+                {
+                    appToUpdate.UpdateProgress = report.percentage;
+                    appToUpdate.UpdateStatusMessage = report.message;
+                });
+
+                bool success = await _wingetService.UpdateAppAsync(id, progress);
+                
+                if (success)
+                {
+                    // Successfully updated, remove from list
+                    UpdatableApps.Remove(appToUpdate);
+                }
+                else
+                {
+                    appToUpdate.UpdateStatusMessage = "No se pudo actualizar. Visite la web oficial.";
+                }
             }
-            finally { IsBusy = false; StatusMessage = ""; }
+            catch (Exception ex)
+            {
+                _log?.Error($"Error al actualizar la aplicación {id}", ex);
+                if (appToUpdate != null) appToUpdate.UpdateStatusMessage = "Error crítico.";
+            }
+            finally
+            {
+                if (appToUpdate != null) appToUpdate.IsUpdating = false;
+            }
         }
 
         private async Task ExecuteUpdateAllAppsAsync()
@@ -1696,23 +1778,78 @@ namespace WassControlSys.ViewModels
 
         private async Task ExecuteExportDriversAsync()
         {
-            if (IsBusy) return;
+            if (IsExportingDrivers) return;
+
+            if (!IsAdministrator())
+            {
+                await _dialogService.ShowMessage("Esta función requiere que la aplicación se ejecute con privilegios de administrador.", "Privilegios Requeridos");
+                return;
+            }
+
+            string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "WassControl_Drivers_Backup");
+            
+            bool confirm = await _dialogService.ShowConfirmation($"Los drivers se exportarán a:\n\n{path}\n\n¿Desea continuar?", "Confirmar Exportación");
+            if (!confirm) return;
+            
             try
             {
-                // Dejar que el usuario elija carpeta o usar una por defecto
-                string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "WassControl_Drivers_Backup");
-                IsBusy = true;
-                StatusMessage = "Exportando controladores...";
-                var r = await _driverService.ExportDriversAsync(path);
-                await _dialogService.ShowMessage((r.Message ?? "Drivers exportados.") + $"\n\nUbicación: {path}", r.Success ? "Copia de Seguridad" : "Error");
+                IsExportingDrivers = true;
+                DriverExportProgress = 0;
+                DriverExportStatusMessage = "Iniciando exportación...";
+
+                var progress = new Progress<(int percentage, string message)>(report =>
+                {
+                    DriverExportProgress = report.percentage;
+                    DriverExportStatusMessage = report.message;
+                });
+
+                var result = await _driverService.ExportDriversAsync(path, progress);
+                
+                await _dialogService.ShowMessage((result.Message ?? "Drivers exportados.") + $"\n\nUbicación: {path}", result.Success ? "Copia de Seguridad Completada" : "Error");
             }
-            finally { IsBusy = false; StatusMessage = ""; }
+            catch (Exception ex)
+            {
+                _log?.Error("Error durante la exportación de drivers", ex);
+                await _dialogService.ShowMessage($"Se produjo un error inesperado: {ex.Message}", "Error Crítico");
+            }
+            finally
+            {
+                IsExportingDrivers = false;
+                DriverExportProgress = 0;
+                DriverExportStatusMessage = "";
+            }
+        }
+
+        private void ExecuteFreeUpDiskSpace()
+        {
+            if (SelectedDriveForCleanup == null) return;
+
+            string drive = SelectedDriveForCleanup.DriveLetter.TrimEnd('\\');
+            _log?.Info($"Lanzando cleanmgr.exe para la unidad: {drive}");
+
+            try
+            {
+                var psi = new ProcessStartInfo("cleanmgr.exe", $"/d {drive}")
+                {
+                    UseShellExecute = true,
+                    Verb = "runas"
+                };
+                Process.Start(psi);
+            }
+            catch (Exception ex)
+            {
+                _log?.Error($"Error al lanzar cleanmgr.exe para {drive}", ex);
+                _ = _dialogService.ShowMessage($"No se pudo iniciar la utilidad de limpieza de disco para {drive}.", "Error");
+            }
         }
 
         private async Task ExecuteAnalyzeDiskSpaceAsync(string path)
         {
             if (IsBusy) return;
-            if (string.IsNullOrEmpty(path)) path = "C:\\"; // Default
+            if (string.IsNullOrEmpty(path)) return;
+
+            var analyzer = DiskAnalyzers.FirstOrDefault(a => a.DriveLetter.Equals(path, StringComparison.OrdinalIgnoreCase));
+            if (analyzer == null) return;
 
             try
             {
@@ -1720,15 +1857,7 @@ namespace WassControlSys.ViewModels
                 StatusMessage = $"Analizando {path}...";
                 var items = await _diskAnalyzerService.AnalyzeDirectoryAsync(path);
                 
-                // Actualizar la propiedad correcta según el disco
-                if (path.StartsWith("D:", StringComparison.OrdinalIgnoreCase))
-                {
-                    DiskAnalysisResultD = new ObservableCollection<FolderSizeInfo>(items);
-                }
-                else
-                {
-                    DiskAnalysisResult = new ObservableCollection<FolderSizeInfo>(items);
-                }
+                analyzer.AnalysisResult = new ObservableCollection<FolderSizeInfo>(items);
             }
             catch (Exception ex)
             {

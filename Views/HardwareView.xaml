@@ -42,6 +42,11 @@
                                 </ItemsControl>
                                 
                                 <Button Content="Exportar Backup de Drivers" Command="{Binding ExportDriversCommand}" Style="{StaticResource PrimaryButtonStyle}" Margin="0,20,0,0" HorizontalAlignment="Left"/>
+                                
+                                <StackPanel Visibility="{Binding IsExportingDrivers, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,15,0,0">
+                                    <TextBlock Text="{Binding DriverExportStatusMessage}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,5"/>
+                                    <ProgressBar Value="{Binding DriverExportProgress}" Maximum="100" Height="8"/>
+                                </StackPanel>
                             </StackPanel>
                         </ScrollViewer>
 
@@ -76,12 +81,12 @@
                             <!-- Sección Superior: Lista de Discos -->
                             <StackPanel Grid.Row="0">
                                 <Grid Margin="0,0,0,15">
-                                    <TextBlock Text="Información de Discos" FontSize="16" FontWeight="Bold" HorizontalAlignment="Left"/>
-                                    <Button Content="Actualizar" 
-                                            Command="{Binding RefreshDiskHealthCommand}" 
-                                            Style="{StaticResource SecondaryButtonStyle}" 
-                                            HorizontalAlignment="Right"
-                                            Padding="15,5"/>
+                                    <TextBlock Text="Información de Discos" FontSize="16" FontWeight="Bold" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                        <ComboBox ItemsSource="{Binding DiskAnalyzers}" DisplayMemberPath="DriveLetter" SelectedItem="{Binding SelectedDriveForCleanup, Mode=TwoWay}" VerticalAlignment="Center" Margin="0,0,10,0" Width="100"/>
+                                        <Button Content="Liberar Espacio" Command="{Binding FreeUpDiskSpaceCommand}" Style="{StaticResource SecondaryButtonStyle}" Padding="15,5"/>
+                                        <Button Content="Actualizar" Command="{Binding RefreshDiskHealthCommand}" Style="{StaticResource SecondaryButtonStyle}" Padding="15,5" Margin="10,0,0,0"/>
+                                    </StackPanel>
                                 </Grid>
                                 
                                 <DataGrid ItemsSource="{Binding DiskHealth}" 
@@ -132,69 +137,43 @@
                             </StackPanel>
 
                             <!-- Sección Inferior: Analizadores de Espacio -->
-                            <Grid Grid.Row="1">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="20"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-
-                                <!-- Analizador de Espacio C:\ -->
-                                <Border Grid.Column="0" Background="{DynamicResource WindowBackgroundBrush}" CornerRadius="8" Padding="15">
-                                    <StackPanel>
-                                        <TextBlock Text="Analizador de Espacio" FontSize="14" FontWeight="Bold" Margin="0,0,0,10"/>
-                                        <Button Content="Analizar C:\" 
-                                                Command="{Binding AnalyzeDiskSpaceCommand}" 
-                                                CommandParameter="C:\" 
-                                                Style="{StaticResource SecondaryButtonStyle}" 
-                                                HorizontalAlignment="Left" 
-                                                Margin="0,0,0,10"/>
-                                        <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto">
-                                            <ItemsControl ItemsSource="{Binding DiskAnalysisResult}">
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <StackPanel Margin="0,5">
-                                                            <Grid>
-                                                                <TextBlock Text="{Binding Path}" Foreground="{DynamicResource TextBrush}" FontSize="12"/>
-                                                                <TextBlock Text="{Binding FormattedSize}" Foreground="{DynamicResource SecondaryTextBrush}" HorizontalAlignment="Right" FontSize="12"/>
-                                                            </Grid>
-                                                            <ProgressBar Value="{Binding Percentage}" Maximum="100" Height="6" Margin="0,4,0,0" Background="{DynamicResource WindowBackgroundBrush}" Foreground="{DynamicResource AccentBrush}" BorderThickness="0"/>
-                                                        </StackPanel>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
-                                        </ScrollViewer>
-                                    </StackPanel>
-                                </Border>
-
-                                <!-- Analizador de Espacio D:\ -->
-                                <Border Grid.Column="2" Background="{DynamicResource WindowBackgroundBrush}" CornerRadius="8" Padding="15">
-                                    <StackPanel>
-                                        <TextBlock Text="Analizador de Espacio" FontSize="14" FontWeight="Bold" Margin="0,0,0,10"/>
-                                        <Button Content="Analizar D:\" 
-                                                Command="{Binding AnalyzeDiskSpaceCommand}" 
-                                                CommandParameter="D:\" 
-                                                Style="{StaticResource SecondaryButtonStyle}" 
-                                                HorizontalAlignment="Left" 
-                                                Margin="0,0,0,10"/>
-                                        <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto">
-                                            <ItemsControl ItemsSource="{Binding DiskAnalysisResultD}">
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <StackPanel Margin="0,5">
-                                                            <Grid>
-                                                                <TextBlock Text="{Binding Path}" Foreground="{DynamicResource TextBrush}" FontSize="12"/>
-                                                                <TextBlock Text="{Binding FormattedSize}" Foreground="{DynamicResource SecondaryTextBrush}" HorizontalAlignment="Right" FontSize="12"/>
-                                                            </Grid>
-                                                            <ProgressBar Value="{Binding Percentage}" Maximum="100" Height="6" Margin="0,4,0,0" Background="{DynamicResource WindowBackgroundBrush}" Foreground="{DynamicResource AccentBrush}" BorderThickness="0"/>
-                                                        </StackPanel>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
-                                        </ScrollViewer>
-                                    </StackPanel>
-                                </Border>
-                            </Grid>
+                            <ItemsControl Grid.Row="1" ItemsSource="{Binding DiskAnalyzers}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel Orientation="Horizontal"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{DynamicResource WindowBackgroundBrush}" CornerRadius="8" Padding="15" Margin="0,0,10,10" MinWidth="300">
+                                            <StackPanel>
+                                                <TextBlock Text="Analizador de Espacio" FontSize="14" FontWeight="Bold" Margin="0,0,0,10"/>
+                                                <Button Content="{Binding DriveLetter, StringFormat='Analizar {0}'}" 
+                                                        Command="{Binding DataContext.AnalyzeDiskSpaceCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" 
+                                                        CommandParameter="{Binding DriveLetter}" 
+                                                        Style="{StaticResource SecondaryButtonStyle}" 
+                                                        HorizontalAlignment="Left" 
+                                                        Margin="0,0,0,10"/>
+                                                <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto">
+                                                    <ItemsControl ItemsSource="{Binding AnalysisResult}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <StackPanel Margin="0,5">
+                                                                    <Grid>
+                                                                        <TextBlock Text="{Binding Path}" Foreground="{DynamicResource TextBrush}" FontSize="12"/>
+                                                                        <TextBlock Text="{Binding FormattedSize}" Foreground="{DynamicResource SecondaryTextBrush}" HorizontalAlignment="Right" FontSize="12"/>
+                                                                    </Grid>
+                                                                    <ProgressBar Value="{Binding Percentage}" Maximum="100" Height="6" Margin="0,4,0,0" Background="{DynamicResource WindowBackgroundBrush}" Foreground="{DynamicResource AccentBrush}" BorderThickness="0"/>
+                                                                </StackPanel>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </ScrollViewer>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </Grid>
                     </ScrollViewer>
                 </Border>

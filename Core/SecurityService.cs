@@ -71,10 +71,10 @@ namespace WassControlSys.Core
                         {
                             if (int.TryParse(result["productState"].ToString(), out int state))
                             {
-                                // The state is a bitmask. The second byte (from low to high) defines the state.
-                                // 0x10 = ON, 0x11 = OFF, 0x00 = ?
-                                // A common check is (state & 0x1000) != 0 for enabled.
-                                if ((state & 0x1000) != 0)
+                                // The second byte of productState indicates the security status
+                                // 0x10 means "On"
+                                int secondByte = (state >> 8) & 0xFF;
+                                if (secondByte == 0x10)
                                 {
                                     anyActive = true;
                                 }
@@ -83,9 +83,10 @@ namespace WassControlSys.Core
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // WMI query might fail on some systems.
+                // Log the exception. For now, we'll just write to a file.
+                System.IO.File.WriteAllText("error_antivirus.txt", ex.ToString());
             }
 
             if (detectedAVs.Count > 0)
@@ -111,7 +112,10 @@ namespace WassControlSys.Core
                         {
                              if (int.TryParse(result["productState"].ToString(), out int state))
                             {
-                                if ((state & 0x1000) != 0)
+                                // The second byte of productState indicates the security status
+                                // 0x10 means "On"
+                                int secondByte = (state >> 8) & 0xFF;
+                                if (secondByte == 0x10)
                                 {
                                     return true; // Found an active Firewall
                                 }
@@ -120,8 +124,10 @@ namespace WassControlSys.Core
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                // Log the exception. For now, we'll just write to a file.
+                System.IO.File.WriteAllText("error_firewall.txt", ex.ToString());
                 // Fallback for older systems or if WMI fails: check the service status.
                 try
                 {
