@@ -11,7 +11,7 @@
 
 **WassControlSys** es una suite de utilidades moderna diseñada por **WilmerWass** para devolverle el control de su sistema operativo. Optimice el rendimiento, limpie archivos basura, gestione la privacidad y elimine el bloatware, todo desde una interfaz unificada y elegante.
 
-[Descargar Última Versión](#descarga) • [Características](#características) • [Documentación](#documentación) • [Contribuir](#contribuir)
+[Descargar Última Versión](#-descarga-e-instalación) • [Características](#-características-principales) • [Documentación](#-documentación-técnica) • [Contribuir](CONTRIBUTING.md)
 
 </div>
 
@@ -76,11 +76,11 @@ Elija la versión que mejor se adapte a sus necesidades:
 - **WassControlSys v1.1.5 (Autocontenida)**
 
   - **Descripción:** Ideal para la mayoría de los usuarios. Incluye el .NET 8.0 Runtime integrado, por lo que **no necesita instalar .NET por separado**. Simplemente descargue, descomprima y ejecute.
-  - **Descarga Directa:** [WassControlSys_v1.1.5_SelfContained.zip](https://github.com/WilmerWass/WassControlSys/releases/download/1.1.5/WassControlSys_v1.1.5_SelfContained.zip)
+  - **Descarga Directa:** [WassControlSys_v1.1.5_SelfContained.zip](https://github.com/WilmerWass/WassControlSys/releases/download/v1.1.5/WassControlSys_v1.1.5_SelfContained.zip)
 
 - **WassControlSys v1.1.5 (Requiere .NET)**
   - **Descripción:** Esta es la versión más ligera en tamaño de descarga. **Requiere que el .NET 8.0 Desktop Runtime esté instalado** previamente en su sistema.
-  - **Descarga Directa:** [WassControlSys_v1.1.5_Normal.zip](https://github.com/WilmerWass/WassControlSys/releases/download/1.1.5/WassControlSys_v1.1.5_Normal.zip)
+  - **Descarga Directa:** [WassControlSys_v1.1.5_Normal.zip](https://github.com/WilmerWass/WassControlSys/releases/download/v1.1.5/WassControlSys_v1.1.5_Normal.zip)
   - **Descargar .NET 8.0 Desktop Runtime:** [Aquí](https://dotnet.microsoft.com/download/dotnet/8.0)
 
 ### Instalación

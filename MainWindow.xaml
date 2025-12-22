@@ -7,7 +7,8 @@
         xmlns:core="clr-namespace:WassControlSys.Core"
         xmlns:views="clr-namespace:WassControlSys.Views"
         mc:Ignorable="d"
-        Title="WassControlSys" Height="600" Width="1000">
+        Title="WassControlSys" Height="600" Width="1000"
+        Icon="Resources/img/logo_WCS.ico">
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="32" ResizeBorderThickness="4" GlassFrameThickness="0" CornerRadius="0"/>
     </WindowChrome.WindowChrome>
@@ -28,12 +29,13 @@
                     </Grid.ColumnDefinitions>
 
                     <!-- Título -->
-                    <TextBlock Grid.Column="0" Text="WassControlSys" 
-                               VerticalAlignment="Center" 
-                               Margin="15,0,0,0" 
-                               FontSize="13" 
-                               FontWeight="SemiBold"
-                               Foreground="{DynamicResource PrimaryBrush}"/>
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="15,0,0,0">
+                        <Image Source="Resources/img/logo_WCS.png" Width="16" Height="16" Margin="0,0,8,0"/>
+                        <TextBlock Text="WassControlSys" 
+                                   FontSize="13" 
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource PrimaryBrush}"/>
+                    </StackPanel>
 
                     <!-- Controles de ventana -->
                     <StackPanel Grid.Column="1" Orientation="Horizontal" WindowChrome.IsHitTestVisibleInChrome="True">
@@ -147,7 +149,10 @@
                 <Border Grid.Column="0" Background="{StaticResource SurfaceBrush}" BorderBrush="#333" BorderThickness="0,0,1,0">
                     <StackPanel Margin="20">
                         <!-- Logo / Título -->
-                        <TextBlock Text="WassControl" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}" Margin="0,0,0,30"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,30">
+                            <Image Source="Resources/img/logo_WCS.png" Width="32" Height="32" Margin="0,0,10,0"/>
+                            <TextBlock Text="WassControl" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}" VerticalAlignment="Center"/>
+                        </StackPanel>
 
                         <!-- Navegación -->
                         <ScrollViewer VerticalScrollBarVisibility="Auto">

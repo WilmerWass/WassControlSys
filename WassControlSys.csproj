@@ -15,6 +15,7 @@
     
     <!-- Application Information -->
     <Company>WilmerWass</Company>
+    <ApplicationIcon>Resources\img\logo_WCS.ico</ApplicationIcon>
     <Product>WassControlSys</Product>
     <Description>Sistema de Control y Optimización para Windows</Description>
     <Copyright>Copyright © 2025 WilmerWass</Copyright>
@@ -29,6 +30,12 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
     <PackageReference Include="System.Management" Version="10.0.0" />
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Resources\img\logo_WCS.ico" />
+    <Resource Include="Resources\img\logo_WCS.png" />
+    <Resource Include="Resources\img\logo_WCS.svg" />
   </ItemGroup>
 
 </Project>
