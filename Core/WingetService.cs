@@ -64,20 +64,49 @@ namespace WassControlSys.Core
 
                             if (string.IsNullOrWhiteSpace(line)) continue;
 
-                            string name = line.Substring(0, idIndex).Trim();
-                            string id = line.Substring(idIndex, versionIndex - idIndex).Trim();
-                            string version = line.Substring(versionIndex, availableIndex - versionIndex).Trim();
-                            string availableVersion = line.Substring(availableIndex, sourceIndex - availableIndex).Trim();
-                            string source = line.Substring(sourceIndex).Trim();
-
-                            apps.Add(new WingetApp
+                            try
                             {
-                                Name = name,
-                                Id = id,
-                                CurrentVersion = version,
-                                AvailableVersion = availableVersion,
-                                Source = source
-                            });
+                                // Asegurar que la línea tenga longitud suficiente antes de Substring
+                                string name = line.Length > idIndex ? line.Substring(0, idIndex).Trim() : line.Trim();
+                                string id = "";
+                                if (line.Length > idIndex)
+                                {
+                                    int length = (line.Length > versionIndex ? versionIndex : line.Length) - idIndex;
+                                    id = line.Substring(idIndex, length).Trim();
+                                }
+                                
+                                string version = "";
+                                if (line.Length > versionIndex)
+                                {
+                                    int length = (line.Length > availableIndex ? availableIndex : line.Length) - versionIndex;
+                                    version = line.Substring(versionIndex, length).Trim();
+                                }
+
+                                string availableVersion = "";
+                                if (line.Length > availableIndex)
+                                {
+                                    int length = (line.Length > sourceIndex ? sourceIndex : line.Length) - availableIndex;
+                                    availableVersion = line.Substring(availableIndex, length).Trim();
+                                }
+
+                                string source = line.Length > sourceIndex ? line.Substring(sourceIndex).Trim() : "";
+
+                                if (!string.IsNullOrEmpty(id))
+                                {
+                                    apps.Add(new WingetApp
+                                    {
+                                        Name = name,
+                                        Id = id,
+                                        CurrentVersion = version,
+                                        AvailableVersion = availableVersion,
+                                        Source = source
+                                    });
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _log.Warn($"Error parseando línea de winget: '{line}'. Error: {ex.Message}");
+                            }
                         }
                     }
                 }
@@ -106,30 +135,43 @@ namespace WassControlSys.Core
 
                 using (var process = new Process { StartInfo = psi })
                 {
+                    var stage = UpdateStage.None;
+
                     process.OutputDataReceived += (sender, args) =>
                     {
-                        if (args.Data != null)
-                        {
-                            _log.Info($"[Winget] {args.Data}");
-                            if (args.Data.Contains("Downloading"))
-                            {
-                                progress?.Report((0, "Descargando..."));
-                            }
-                            else
-                            {
-                                var match = Regex.Match(args.Data, @"(\d{1,3})%");
-                                if (match.Success && int.TryParse(match.Groups[1].Value, out int percentage))
-                                {
-                                    progress?.Report((percentage, $"Descargando... {percentage}%"));
-                                }
-                            }
+                        if (string.IsNullOrWhiteSpace(args.Data)) return;
 
-                            if (args.Data.ToLower().Contains("installing"))
+                        _log.Info($"[Winget] {args.Data}");
+                        string line = args.Data;
+
+                        if (line.Contains("Downloading", StringComparison.OrdinalIgnoreCase))
+                        {
+                            stage = UpdateStage.Downloading;
+                        }
+                        else if (line.Contains("Installing", StringComparison.OrdinalIgnoreCase))
+                        {
+                            stage = UpdateStage.Installing;
+                        }
+
+                        var match = Regex.Match(line, @"(\d{1,3})%");
+                        if (match.Success && int.TryParse(match.Groups[1].Value, out int percentage))
+                        {
+                            string message = stage == UpdateStage.Installing ? "Instalando..." : "Descargando...";
+                            progress?.Report((percentage, $"{message} {percentage}%"));
+                        }
+                        else // Report status messages even without percentage
+                        {
+                            if (stage == UpdateStage.Downloading && line.Contains("Successfully verified", StringComparison.OrdinalIgnoreCase))
                             {
-                                progress?.Report((100, "Instalando..."));
+                                progress?.Report((100, "Paquete verificado."));
+                            }
+                            else if (stage == UpdateStage.None && line.Contains("Found", StringComparison.OrdinalIgnoreCase))
+                            {
+                                progress?.Report((0, "Aplicación encontrada..."));
                             }
                         }
                     };
+
                     process.ErrorDataReceived += (sender, args) =>
                     {
                         if (args.Data != null) _log.Error($"[Winget Error] {args.Data}");
@@ -148,6 +190,10 @@ namespace WassControlSys.Core
                     }
                     else
                     {
+                        _log.Warn($"Winget finalizó con código de salida: {process.ExitCode}");
+                        progress?.Report((100, "Error en la actualización."));
+                        // Código 1978335198 puede aparecer en algunas instalaciones exitosas.
+                        // Código 9 podría requerir atención, pero a veces es solo una advertencia.
                         return false;
                     }
                 }
@@ -155,9 +201,12 @@ namespace WassControlSys.Core
             catch (Exception ex)
             {
                 _log.Error($"Error actualizando app {appId}", ex);
+                progress?.Report((100, "Error crítico."));
                 return false;
             }
         }
+
+        private enum UpdateStage { None, Downloading, Installing }
 
         public async Task<bool> UpdateAllAppsAsync()
         {
