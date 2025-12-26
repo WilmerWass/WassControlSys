@@ -130,7 +130,6 @@ DocProject/Help/Html2
 DocProject/Help/html
 
 # Click-Once directory
-publish/
 
 # Publish Web Output
 *.[Pp]ublish.xml
@@ -322,10 +321,8 @@ Plan de Evolución WassControlSys v2.0.md
 WassControlSys_v*.zip
 error.txt
 start_log.txt
-package-lock.json
 
-# log
-log/
-Publish/
+
+
 
 WASSCONTROLSYS_PROYECTOS/
