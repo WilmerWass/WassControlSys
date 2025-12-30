@@ -37,7 +37,53 @@
             <core:IntToVisibilityConverter x:Key="IntToVisibilityConverter"/>
             <core:InvertedIntToVisibilityConverter x:Key="InvertedIntToVisibilityConverter"/>
 
-
+            <!-- Estilo para ToggleSwitch Moderno -->
+            <Style x:Key="ToggleSwitchStyle" TargetType="{x:Type ToggleButton}">
+                <Setter Property="Width" Value="52"/>
+                <Setter Property="Height" Value="30"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type ToggleButton}">
+                            <Grid Cursor="Hand">
+                                <Border x:Name="BackgroundBorder" 
+                                        Background="{DynamicResource SurfaceBrush}" 
+                                        CornerRadius="15"
+                                        BorderBrush="#444"
+                                        BorderThickness="1"/>
+                                <Border x:Name="Dot" 
+                                        Background="White" 
+                                        Width="22" 
+                                        Height="22" 
+                                        CornerRadius="11" 
+                                        HorizontalAlignment="Left"
+                                        Margin="3,0,0,0">
+                                    <Border.RenderTransform>
+                                        <TranslateTransform X="0" />
+                                    </Border.RenderTransform>
+                                    <Border.Effect>
+                                        <DropShadowEffect ShadowDepth="1" Color="Black" Opacity="0.2" BlurRadius="4"/>
+                                    </Border.Effect>
+                                </Border>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="BackgroundBorder" Property="Background" Value="{DynamicResource PrimaryBrush}"/>
+                                    <Setter TargetName="BackgroundBorder" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+                                    <Setter TargetName="Dot" Property="RenderTransform">
+                                        <Setter.Value>
+                                            <TranslateTransform X="22" />
+                                        </Setter.Value>
+                                    </Setter>
+                                </Trigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="BackgroundBorder" Property="Opacity" Value="0.9"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+			
             <!-- Estilos de DataGrid (Corregir Visibilidad) -->
             <Style TargetType="DataGrid">
                 <Setter Property="Background" Value="Transparent"/>
@@ -184,39 +230,7 @@
                 </Setter>
             </Style>
 
-            <Style TargetType="ToggleButton" x:Key="ToggleSwitchStyle">
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="ToggleButton">
-                            <Border x:Name="Chrome"
-                                    BorderBrush="{DynamicResource SecondaryTextBrush}"
-                                    BorderThickness="1"
-                                    Background="{DynamicResource WindowBackgroundBrush}"
-                                    CornerRadius="10"
-                                    Height="20"
-                                    Width="50">
-                                <Grid>
-                                    <Ellipse x:Name="ToggleThumb"
-                                             Fill="{DynamicResource TextBrush}"
-                                             HorizontalAlignment="Left"
-                                             Margin="2"
-                                             Width="16"
-                                             Height="16"/>
-                                </Grid>
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsChecked" Value="True">
-                                    <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource PrimaryBrush}"/>
-                                    <Setter TargetName="ToggleThumb" Property="HorizontalAlignment" Value="Right"/>
-                                </Trigger>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource PrimaryHoverBrush}"/>
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-            </Style>
+            <!-- ComboBox Moderno y Premium -->
 
             <Style TargetType="TextBlock" x:Key="HeaderTextStyle">
                 <Setter Property="FontFamily" Value="{StaticResource MainFont}"/>
@@ -253,7 +267,11 @@
                 <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
                 <Style.Triggers>
                     <Trigger Property="IsChecked" Value="True">
-                        <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}"/>
+                        <Setter Property="Foreground">
+                            <Setter.Value>
+                                <SolidColorBrush Color="{DynamicResource PrimaryColor}"/>
+                            </Setter.Value>
+                        </Setter>
                     </Trigger>
                 </Style.Triggers>
             </Style>
@@ -331,7 +349,11 @@
                                             </Border>
                                             <ControlTemplate.Triggers>
                                                 <Trigger Property="IsMouseOver" Value="true">
-                                                    <Setter TargetName="templateRoot" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+                                                    <Setter TargetName="templateRoot" Property="BorderBrush">
+                                                        <Setter.Value>
+                                                            <SolidColorBrush Color="{DynamicResource PrimaryColor}"/>
+                                                        </Setter.Value>
+                                                    </Setter>
                                                 </Trigger>
                                             </ControlTemplate.Triggers>
                                         </ControlTemplate>
@@ -433,11 +455,11 @@
             <Style x:Key="AnimatedViewStyle" TargetType="FrameworkElement">
                 <Setter Property="RenderTransform">
                     <Setter.Value>
-                        <TranslateTransform Y="20"/>
+                        <TranslateTransform Y="0"/>
                     </Setter.Value>
                 </Setter>
-                <Setter Property="Opacity" Value="0"/>
-                <Style.Triggers>
+                <Setter Property="Opacity" Value="1"/>
+                <!-- <Style.Triggers>
                     <Trigger Property="Visibility" Value="Visible">
                         <Trigger.EnterActions>
                             <BeginStoryboard>
@@ -452,7 +474,7 @@
                             </BeginStoryboard>
                         </Trigger.EnterActions>
                     </Trigger>
-                </Style.Triggers>
+                </Style.Triggers> -->
             </Style>
 
             <!-- Estilo para Tarjetas con Hover Animado -->
@@ -468,24 +490,12 @@
                 </Setter>
                 <Style.Triggers>
                     <Trigger Property="IsMouseOver" Value="True">
-                        <Trigger.EnterActions>
-                            <BeginStoryboard>
-                                <Storyboard>
-                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1.02" Duration="0:0:0.2"/>
-                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1.02" Duration="0:0:0.2"/>
-                                    <ColorAnimation Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)" To="{StaticResource SurfaceHoverColor}" Duration="0:0:0.2"/>
-                                </Storyboard>
-                            </BeginStoryboard>
-                        </Trigger.EnterActions>
-                        <Trigger.ExitActions>
-                            <BeginStoryboard>
-                                <Storyboard>
-                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1" Duration="0:0:0.2"/>
-                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1" Duration="0:0:0.2"/>
-                                    <ColorAnimation Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)" To="{StaticResource SurfaceColor}" Duration="0:0:0.2"/>
-                                </Storyboard>
-                            </BeginStoryboard>
-                        </Trigger.ExitActions>
+                        <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}"/>
+                        <Setter Property="RenderTransform">
+                            <Setter.Value>
+                                <ScaleTransform ScaleX="1.02" ScaleY="1.02"/>
+                            </Setter.Value>
+                        </Setter>
                     </Trigger>
                 </Style.Triggers>
             </Style>
