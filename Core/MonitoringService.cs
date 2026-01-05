@@ -68,50 +68,53 @@ namespace WassControlSys.Core
             }
         }
 
-        public SystemUsage GetSystemUsage()
+        public async Task<SystemUsage> GetSystemUsageAsync()
         {
-            double cpu = 0;
-            try
+            return await Task.Run(() =>
             {
-                if (_cpuCounterAvailable && _cpuCounter != null)
+                double cpu = 0;
+                try
                 {
-                    cpu = Math.Clamp(_cpuCounter.NextValue(), 0, 100);
+                    if (_cpuCounterAvailable && _cpuCounter != null)
+                    {
+                        cpu = Math.Clamp(_cpuCounter.NextValue(), 0, 100);
+                    }
                 }
-            }
-            catch
-            {
-                cpu = 0;
-            }
-
-            double ram = GetMemoryUsagePercent();
-            double disk = GetSystemDriveUsagePercent();
-
-            var usage = new SystemUsage { CpuUsage = cpu, RamUsage = ram, DiskUsage = disk };
-            try
-            {
-                if (_cpuCoreCounters.Length > 0)
+                catch
                 {
-                    usage.CpuPerCore = _cpuCoreCounters.Select(c => (double)Math.Clamp(c.NextValue(), 0, 100)).ToArray();
+                    cpu = 0;
                 }
-            }
-            catch { }
-            try
-            {
-                usage.DiskReadsPerSec = _diskReadsPerSec?.NextValue() ?? 0;
-                usage.DiskWritesPerSec = _diskWritesPerSec?.NextValue() ?? 0;
-                usage.DiskAvgQueueLength = _diskAvgQueueLen?.NextValue() ?? 0;
-                usage.DiskReadLatencyMs = (_diskSecPerRead?.NextValue() ?? 0) * 1000.0;
-                usage.DiskWriteLatencyMs = (_diskSecPerWrite?.NextValue() ?? 0) * 1000.0;
-            }
-            catch { }
-            try
-            {
-                usage.NetBytesSentPerSec = _netSentCounters.Sum(c => c.NextValue());
-                usage.NetBytesReceivedPerSec = _netRecvCounters.Sum(c => c.NextValue());
-                usage.ActiveTcpConnections = GetActiveTcpConnectionsCount();
-            }
-            catch { }
-            return usage;
+
+                double ram = GetMemoryUsagePercent();
+                double disk = GetSystemDriveUsagePercent();
+
+                var usage = new SystemUsage { CpuUsage = cpu, RamUsage = ram, DiskUsage = disk };
+                try
+                {
+                    if (_cpuCoreCounters.Length > 0)
+                    {
+                        usage.CpuPerCore = _cpuCoreCounters.Select(c => (double)Math.Clamp(c.NextValue(), 0, 100)).ToArray();
+                    }
+                }
+                catch { }
+                try
+                {
+                    usage.DiskReadsPerSec = _diskReadsPerSec?.NextValue() ?? 0;
+                    usage.DiskWritesPerSec = _diskWritesPerSec?.NextValue() ?? 0;
+                    usage.DiskAvgQueueLength = _diskAvgQueueLen?.NextValue() ?? 0;
+                    usage.DiskReadLatencyMs = (_diskSecPerRead?.NextValue() ?? 0) * 1000.0;
+                    usage.DiskWriteLatencyMs = (_diskSecPerWrite?.NextValue() ?? 0) * 1000.0;
+                }
+                catch { }
+                try
+                {
+                    usage.NetBytesSentPerSec = _netSentCounters.Sum(c => c.NextValue());
+                    usage.NetBytesReceivedPerSec = _netRecvCounters.Sum(c => c.NextValue());
+                    usage.ActiveTcpConnections = GetActiveTcpConnectionsCount();
+                }
+                catch { }
+                return usage;
+            });
         }
 
         private static double GetSystemDriveUsagePercent()
@@ -212,20 +215,10 @@ namespace WassControlSys.Core
         {
             try
             {
-                var psi = new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = "netstat",
-                    Arguments = "-an",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    CreateNoWindow = true
-                };
-                using var p = System.Diagnostics.Process.Start(psi);
-                if (p == null) return 0;
-                string output = p.StandardOutput.ReadToEnd();
-                p.WaitForExit();
-                int count = output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Count(l => l.Contains("TCP") && l.Contains("ESTABLISHED"));
-                return count;
+                // Usar IPGlobalProperties es MUCHO más eficiente que netstat
+                var properties = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties();
+                var connections = properties.GetActiveTcpConnections();
+                return connections.Count(c => c.State == System.Net.NetworkInformation.TcpState.Established);
             }
             catch { return 0; }
         }

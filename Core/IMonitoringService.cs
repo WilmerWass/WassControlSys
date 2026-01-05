@@ -5,7 +5,7 @@ namespace WassControlSys.Core
 {
     public interface IMonitoringService : IDisposable
     {
-        SystemUsage GetSystemUsage();
+        Task<SystemUsage> GetSystemUsageAsync();
         TimeSpan GetIdleTime();
     }
 }

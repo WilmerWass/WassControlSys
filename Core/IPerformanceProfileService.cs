@@ -6,5 +6,6 @@ namespace WassControlSys.Core
     public interface IPerformanceProfileService
     {
         Task<ApplyProfileResult> ApplyProfileAsync(PerformanceMode mode);
+        Task<ApplyProfileResult> RestoreOriginalStateAsync();
     }
 }

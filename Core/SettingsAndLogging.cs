@@ -108,6 +108,19 @@ namespace WassControlSys.Core
 
 namespace WassControlSys.Models
 {
+    public class SystemSnapshot
+    {
+        public string? OriginalPowerPlan { get; set; }
+        public Dictionary<string, ServiceStateSnapshot> Services { get; set; } = new();
+    }
+
+    public class ServiceStateSnapshot
+    {
+        public string Name { get; set; } = "";
+        public string StartType { get; set; } = "Manual";
+        public bool WasRunning { get; set; }
+    }
+
     public class AppSettings
     {
         public PerformanceMode SelectedMode { get; set; }
@@ -121,18 +134,34 @@ namespace WassControlSys.Models
         public bool OptimizeOnIdle { get; set; } = false;
         public bool MinimizeToTray { get; set; } = true;
 
-        public static AppSettings Default() => new AppSettings
+        // Nuevos campos para v1.1.7 (Estabilidad y Perfiles)
+        public Dictionary<string, ProfileConfig> PerformanceProfiles { get; set; } = new();
+        public SystemSnapshot? OriginalSystemSnapshot { get; set; }
+        public bool EnableAutoBoost { get; set; } = true;
+
+        public static AppSettings Default() 
         {
-            SelectedMode = PerformanceMode.General,
-            CurrentSection = "Dashboard",
-            RunOnStartup = false,
-            AccentColor = "#3B82F6",
-            AutoOptimizeRam = false,
-            RamThresholdPercent = 85,
-            Language = "es",
-            IsDarkMode = true,
-            OptimizeOnIdle = false,
-            MinimizeToTray = true
-        };
+            var settings = new AppSettings
+            {
+                SelectedMode = PerformanceMode.General,
+                CurrentSection = "Dashboard",
+                RunOnStartup = false,
+                AccentColor = "#3B82F6",
+                AutoOptimizeRam = false,
+                RamThresholdPercent = 85,
+                Language = "es",
+                IsDarkMode = true,
+                OptimizeOnIdle = false,
+                MinimizeToTray = true
+            };
+
+            // Inicializar perfiles por defecto
+            settings.PerformanceProfiles["Gamer"] = ProfileConfig.DefaultGamer();
+            settings.PerformanceProfiles["Dev"] = ProfileConfig.DefaultDev();
+            settings.PerformanceProfiles["Oficina"] = ProfileConfig.DefaultOficina();
+            settings.PerformanceProfiles["Personalizado"] = new ProfileConfig { Mode = PerformanceMode.Personalizado };
+
+            return settings;
+        }
     }
 }

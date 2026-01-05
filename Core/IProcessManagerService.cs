@@ -12,6 +12,7 @@ namespace WassControlSys.Core
         Task<bool> KillProcessAsync(int pid);
         Task<ProcessImpactStats> ComputeImpactAsync();
         Task<int> ReduceBackgroundProcessesAsync(ProcessPriorityClass targetPriority);
+        Task OptimizeRamAsync();
     }
 }
 

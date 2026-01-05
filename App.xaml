@@ -36,6 +36,7 @@
             <core:StringNotEmptyToVisibilityConverter x:Key="StringNotEmptyToVisibilityConverter"/>
             <core:IntToVisibilityConverter x:Key="IntToVisibilityConverter"/>
             <core:InvertedIntToVisibilityConverter x:Key="InvertedIntToVisibilityConverter"/>
+            <core:StringToColorConverter x:Key="StringToColorConverter"/>
 
             <!-- Estilo para ToggleSwitch Moderno -->
             <Style x:Key="ToggleSwitchStyle" TargetType="{x:Type ToggleButton}">
@@ -192,7 +193,7 @@
                 </Setter>
             </Style>
 
-            <Style TargetType="{x:Type Button}" x:Key="NavButtonStyle">
+            <Style TargetType="{x:Type ButtonBase}" x:Key="NavButtonStyle">
                 <Setter Property="Background" Value="Transparent"/>
                 <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
                 <Setter Property="FontFamily" Value="{StaticResource MainFont}"/>
@@ -203,7 +204,7 @@
                 <Setter Property="Cursor" Value="Hand"/>
                 <Setter Property="Template">
                     <Setter.Value>
-                        <ControlTemplate TargetType="Button">
+                        <ControlTemplate TargetType="{x:Type ButtonBase}">
                             <Border x:Name="NavButtonBorder" Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
                                 <ContentPresenter VerticalAlignment="Center"/>
                             </Border>
@@ -220,6 +221,12 @@
                                             <Binding Path="CommandParameter" RelativeSource="{RelativeSource Self}"/>
                                         </MultiBinding>
                                     </DataTrigger.Binding>
+                                    <Setter TargetName="NavButtonBorder" Property="Background" Value="{DynamicResource PrimaryBrush}"/>
+                                    <Setter Property="Foreground" Value="White"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                </DataTrigger>
+                                <!-- Soporte para RadioButton/ToggleButton seleccionado -->
+                                <DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource Self}}" Value="True">
                                     <Setter TargetName="NavButtonBorder" Property="Background" Value="{DynamicResource PrimaryBrush}"/>
                                     <Setter Property="Foreground" Value="White"/>
                                     <Setter Property="FontWeight" Value="SemiBold"/>
@@ -276,9 +283,47 @@
                 </Style.Triggers>
             </Style>
 
-            <!-- CheckBox Style -->
-            <Style TargetType="CheckBox">
+            <!-- CheckBox Premium -->
+            <Style x:Key="PremiumCheckBoxStyle" TargetType="CheckBox">
+                <Setter Property="Background" Value="#1A1A1A"/>
+                <Setter Property="BorderBrush" Value="#444"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Padding" Value="12,0"/>
                 <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                <Setter Property="VerticalContentAlignment" Value="Center"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="CheckBox">
+                            <Grid x:Name="Root" Margin="0,4" Background="Transparent">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Border x:Name="Box" Width="20" Height="20" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" VerticalAlignment="Center">
+                                    <Viewbox Width="12" Height="10" Visibility="Collapsed" x:Name="CheckIcon">
+                                        <Path Data="M1,5 L4,8 L10,1" Stroke="White" StrokeThickness="2.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
+                                    </Viewbox>
+                                </Border>
+                                <ContentPresenter Grid.Column="1" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="Box" Property="Background" Value="{DynamicResource PrimaryBrush}"/>
+                                    <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+                                    <Setter TargetName="CheckIcon" Property="Visibility" Value="Visible"/>
+                                </Trigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource PrimaryHoverBrush}"/>
+                                    <Setter TargetName="Root" Property="Opacity" Value="0.9"/>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter Property="Opacity" Value="0.5"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
             </Style>
 
             <!-- TabControl Style -->
@@ -500,6 +545,33 @@
                 </Style.Triggers>
             </Style>
 
+            <!-- Estilo para Iconos de Ayuda / Info (Clickable) -->
+            <Style x:Key="HelpIconStyle" TargetType="Button">
+                <Setter Property="Width" Value="18"/>
+                <Setter Property="Height" Value="18"/>
+                <Setter Property="Background" Value="#33FFFFFF"/>
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Margin" Value="8,0,0,0"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="9">
+                                <TextBlock Text="i" FontSize="10" FontWeight="Bold" Foreground="{TemplateBinding Foreground}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="border" Property="Background" Value="{DynamicResource PrimaryBrush}"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="border" Property="Opacity" Value="0.7"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
         </ResourceDictionary>
 
     </Application.Resources>

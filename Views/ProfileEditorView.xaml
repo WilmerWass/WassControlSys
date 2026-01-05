@@ -3,125 +3,276 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:models="clr-namespace:WassControlSys.Models"
              mc:Ignorable="d" 
-             d:DesignHeight="600" d:DesignWidth="800">
-    <Grid Style="{StaticResource AnimatedViewStyle}">
+             d:DesignHeight="800" d:DesignWidth="1000">
+    <Grid Style="{DynamicResource AnimatedViewStyle}" Margin="20" DataContext="{Binding ProfileEditor}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Cabecera -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,20">
-            <TextBlock Text="Editor de Perfiles de Rendimiento" Style="{StaticResource HeaderTextStyle}"/>
-            <TextBlock Text="Configura exactamente qué acciones se ejecutan en cada modo de optimización." Style="{StaticResource SubHeaderTextStyle}" Margin="0,5,0,0"/>
-        </StackPanel>
+        <!-- Cabecera Dinámica con Tematización -->
+        <Border Grid.Row="0" CornerRadius="12" Margin="0,0,0,20" Padding="20">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0.5">
+                    <GradientStop Color="{Binding ProfileThemeBrush, Converter={StaticResource StringToColorConverter}}" Offset="0"/>
+                    <GradientStop Color="#1A1A1A" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <TextBlock Grid.Column="0" Text="{Binding CurrentProfileIcon}" FontSize="40" VerticalAlignment="Center" Margin="0,0,20,0"/>
+                
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding CurrentProfileTitle}" FontSize="28" FontWeight="ExtraBold" Foreground="White" Margin="0,0,0,5"/>
+                    <TextBlock Text="Ajustes predefinidos y avanzados aplicados al activar este modo." Foreground="#BBB" FontSize="13"/>
+                </StackPanel>
 
-        <!-- Selector de Perfil a Editar -->
-        <Border Grid.Row="1" Style="{StaticResource AnimatedCardStyle}" Margin="0,0,0,20">
-            <StackPanel Orientation="Horizontal">
-                <TextBlock Text="Editar Perfil:" Foreground="White" VerticalAlignment="Center" Margin="0,0,20,0" FontSize="16" FontWeight="SemiBold"/>
-                <RadioButton Content="Gamer" IsChecked="{Binding ProfileToEdit, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Gamer}" Style="{StaticResource {x:Type RadioButton}}" Margin="0,0,15,0"/>
-                <RadioButton Content="Dev" IsChecked="{Binding ProfileToEdit, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Dev}" Style="{StaticResource {x:Type RadioButton}}" Margin="0,0,15,0"/>
-                <RadioButton Content="Oficina" IsChecked="{Binding ProfileToEdit, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Oficina}" Style="{StaticResource {x:Type RadioButton}}" Margin="0,0,15,0"/>
-                <RadioButton Content="Personalizado" IsChecked="{Binding ProfileToEdit, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Personalizado}" Style="{StaticResource {x:Type RadioButton}}"/>
+                <!-- Indicador de Cambios Sin Guardar -->
+                <Border Grid.Column="2" Background="#EF4444" CornerRadius="6" Padding="12,6" VerticalAlignment="Center"
+                        Visibility="{Binding HasUnsavedChanges, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="⚠️" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="POR GUARDAR" FontSize="11" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- Selector de Perfil Premium -->
+        <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" CornerRadius="12" Padding="20" Margin="0,0,0,20">
+            <StackPanel>
+                <TextBlock Text="¿Qué perfil deseas configurar?" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12" FontWeight="Bold" Margin="0,0,0,15" Opacity="0.7"/>
+                <UniformGrid Columns="4">
+                    <RadioButton Style="{StaticResource NavButtonStyle}" Content="GAMER" 
+                                 IsChecked="{Binding ProfileToEdit, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Gamer}"
+                                 Tag="🎮" Margin="5"/>
+                    <RadioButton Style="{StaticResource NavButtonStyle}" Content="DEV" 
+                                 IsChecked="{Binding ProfileToEdit, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Dev}"
+                                 Tag="👨‍💻" Margin="5"/>
+                    <RadioButton Style="{StaticResource NavButtonStyle}" Content="OFICINA" 
+                                 IsChecked="{Binding ProfileToEdit, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Oficina}"
+                                 Tag="🏢" Margin="5"/>
+                    <RadioButton Style="{StaticResource NavButtonStyle}" Content="PERSONALIZADO" 
+                                 IsChecked="{Binding ProfileToEdit, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Personalizado}"
+                                 Tag="⚙️" Margin="5"/>
+                </UniformGrid>
             </StackPanel>
         </Border>
 
-        <!-- Opciones del Editor -->
+        <!-- Configuración en Tarjetas Tematizadas -->
         <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="0,0,10,0">
-                
-                <!-- SECCIÓN SERVICIOS -->
-                <Border Style="{StaticResource AnimatedCardStyle}" Margin="0,0,0,15">
+            <UniformGrid Columns="2">
+                <!-- Tarjeta: Servicios y Sistema -->
+                <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="12" Padding="20" Margin="10">
                     <StackPanel>
-                        <Grid Margin="0,0,0,15">
-                            <StackPanel>
-                                <TextBlock Text="Gestión de Servicios ⚙️" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}"/>
-                                <TextBlock Text="Detener servicios de Windows que consumen recursos." FontSize="12" Foreground="#888"/>
-                            </StackPanel>
-                        </Grid>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                            <TextBlock Text="⚙️" FontSize="18" Margin="0,0,10,0"/>
+                            <TextBlock Text="Servicios y Sistema" FontSize="16" FontWeight="Bold" Foreground="{Binding ProfileThemeBrush}"/>
+                        </StackPanel>
                         
-                        <Separator Background="#222" Margin="0,0,0,15"/>
+                        <DockPanel Margin="0,0,0,12">
+                            <Button Style="{StaticResource HelpIconStyle}" DockPanel.Dock="Right" 
+                                    Command="{Binding DataContext.ShowHelpCommand, RelativeSource={RelativeSource AncestorType=Grid}}" 
+                                    CommandParameter="Servicio de precarga de Windows para agilizar el inicio de apps. En discos SSD no suele ser necesario."
+                                    ToolTip="Haz clic para más info"/>
+                            <CheckBox Content="Optimizar SysMain (Carga de Apps)" IsChecked="{Binding SysMainEnabled}" Style="{DynamicResource PremiumCheckBoxStyle}"/>
+                        </DockPanel>
 
-                        <!-- Item de servicio: SysMain -->
-                        <Grid Margin="0,0,0,10">
-                            <StackPanel>
-                                <TextBlock Text="Superfetch / SysMain" Foreground="White" FontSize="14"/>
-                                <TextBlock Text="Mejora el inicio de apps pero usa RAM y CPU en segundo plano." Foreground="#666" FontSize="11"/>
-                            </StackPanel>
-                            <!-- <ToggleButton HorizontalAlignment="Right" IsChecked="True" Style="{StaticResource ToggleSwitchStyle}"/> -->
-                        </Grid>
+                        <DockPanel Margin="0,0,0,12">
+                            <Button Style="{StaticResource HelpIconStyle}" DockPanel.Dock="Right" 
+                                    Command="{Binding DataContext.ShowHelpCommand, RelativeSource={RelativeSource AncestorType=Grid}}" 
+                                    CommandParameter="Servicio de búsqueda e indexación. Pausarlo libera disco y CPU."
+                                    ToolTip="Haz clic para más info"/>
+                            <CheckBox Content="Optimizar Windows Search" IsChecked="{Binding WindowsSearchEnabled}" Style="{DynamicResource PremiumCheckBoxStyle}"/>
+                        </DockPanel>
 
-                        <!-- Item de servicio: Windows Search -->
-                        <Grid Margin="0,0,0,10">
-                            <StackPanel>
-                                <TextBlock Text="Windows Search" Foreground="White" FontSize="14"/>
-                                <TextBlock Text="Indexa archivos para búsqueda rápida. Impacto alto en Disco." Foreground="#666" FontSize="11"/>
-                            </StackPanel>
-                            <!-- <ToggleButton HorizontalAlignment="Right" IsChecked="False" Style="{StaticResource ToggleSwitchStyle}"/> -->
-                        </Grid>
+                        <DockPanel Margin="0,0,0,12">
+                            <Button Style="{StaticResource HelpIconStyle}" DockPanel.Dock="Right" 
+                                    Command="{Binding DataContext.ShowHelpCommand, RelativeSource={RelativeSource AncestorType=Grid}}" 
+                                    CommandParameter="Elimina el envío de datos de uso a Microsoft, mejorando privacidad y red."
+                                    ToolTip="Haz clic para más info"/>
+                            <CheckBox Content="Desactivar Telemetría" IsChecked="{Binding TelemetryEnabled}" Style="{DynamicResource PremiumCheckBoxStyle}"/>
+                        </DockPanel>
 
-                        <!-- Item de servicio: Telemetría -->
-                        <Grid Margin="0,0,0,10">
-                            <StackPanel>
-                                <TextBlock Text="Telemetría de Windows" Foreground="White" FontSize="14"/>
-                                <TextBlock Text="Envío de datos a Microsoft. Seguro de detener." Foreground="#666" FontSize="11"/>
-                            </StackPanel>
-                            <!-- <ToggleButton HorizontalAlignment="Right" IsChecked="True" Style="{StaticResource ToggleSwitchStyle}"/> -->
-                        </Grid>
+                        <DockPanel>
+                            <Button Style="{StaticResource HelpIconStyle}" DockPanel.Dock="Right" 
+                                    Command="{Binding DataContext.ShowHelpCommand, RelativeSource={RelativeSource AncestorType=Grid}}" 
+                                    CommandParameter="Evita que Windows descargue actualizaciones mientras este perfil esté activo."
+                                    ToolTip="Haz clic para más info"/>
+                            <CheckBox Content="Pausar Windows Update" IsChecked="{Binding PauseWindowsUpdate}" Style="{DynamicResource PremiumCheckBoxStyle}"/>
+                        </DockPanel>
                     </StackPanel>
                 </Border>
 
-                <!-- SECCIÓN PROCESOS -->
-                <Border Style="{StaticResource AnimatedCardStyle}" Margin="0,0,0,15">
+                <!-- Tarjeta: Rendimiento y Red -->
+                <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="12" Padding="20" Margin="10">
                     <StackPanel>
-                        <TextBlock Text="Control de Procesos 🖥️" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}" Margin="0,0,0,15"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                            <TextBlock Text="🚀" FontSize="18" Margin="0,0,10,0"/>
+                            <TextBlock Text="Optimización Directa" FontSize="16" FontWeight="Bold" Foreground="{Binding ProfileThemeBrush}"/>
+                        </StackPanel>
                         
-                        <Grid Margin="0,0,0,10">
-                            <StackPanel>
-                                <TextBlock Text="Reducir prioridad de fondo" Foreground="White" FontSize="14"/>
-                                <TextBlock Text="Baja la prioridad de apps que no estás usando actualmente." Foreground="#666" FontSize="11"/>
-                            </StackPanel>
-                            <!-- <ToggleButton HorizontalAlignment="Right" IsChecked="True" Style="{StaticResource ToggleSwitchStyle}"/> -->
-                        </Grid>
+                        <DockPanel Margin="0,0,0,12">
+                            <Button Style="{StaticResource HelpIconStyle}" DockPanel.Dock="Right" 
+                                    Command="{Binding DataContext.ShowHelpCommand, RelativeSource={RelativeSource AncestorType=Grid}}" 
+                                    CommandParameter="Reduce la prioridad de CPU de procesos en segundo plano para dar más recursos al proceso principal."
+                                    ToolTip="Haz clic para más info"/>
+                            <CheckBox Content="Limitar prioridad de fondo" IsChecked="{Binding ReduceBackgroundPriority}" Style="{DynamicResource PremiumCheckBoxStyle}"/>
+                        </DockPanel>
 
-                        <Grid Margin="0,0,0,10">
-                            <StackPanel>
-                                <TextBlock Text="Cerrar apps de mensajería" Foreground="White" FontSize="14"/>
-                                <TextBlock Text="Cierra Discord, Teams o Skype automáticamente." Foreground="#666" FontSize="11"/>
-                            </StackPanel>
-                            <!-- <ToggleButton HorizontalAlignment="Right" IsChecked="False" Style="{StaticResource ToggleSwitchStyle}"/> -->
-                        </Grid>
+                        <DockPanel Margin="0,0,0,12">
+                            <Button Style="{StaticResource HelpIconStyle}" DockPanel.Dock="Right" 
+                                    Command="{Binding DataContext.ShowHelpCommand, RelativeSource={RelativeSource AncestorType=Grid}}" 
+                                    CommandParameter="Libera memoria RAM inmediatamente al activar este perfil."
+                                    ToolTip="Haz clic para más info"/>
+                            <CheckBox Content="Limpieza flash de RAM" IsChecked="{Binding AutoCleanRam}" Style="{DynamicResource PremiumCheckBoxStyle}"/>
+                        </DockPanel>
+
+                        <DockPanel Margin="0,0,0,12">
+                            <Button Style="{StaticResource HelpIconStyle}" DockPanel.Dock="Right" 
+                                    Command="{Binding DataContext.ShowHelpCommand, RelativeSource={RelativeSource AncestorType=Grid}}" 
+                                    CommandParameter="Desactiva animaciones y efectos de Windows para ganar FPS y fluidez."
+                                    ToolTip="Haz clic para más info"/>
+                            <CheckBox Content="Optimizar efectos visuales" IsChecked="{Binding OptimizeVisualEffects}" Style="{DynamicResource PremiumCheckBoxStyle}"/>
+                        </DockPanel>
+
+                        <DockPanel>
+                            <Button Style="{StaticResource HelpIconStyle}" DockPanel.Dock="Right" 
+                                    Command="{Binding DataContext.ShowHelpCommand, RelativeSource={RelativeSource AncestorType=Grid}}" 
+                                    CommandParameter="Configura el Multimedia Class Scheduler para priorizar el tráfico de red de juegos y apps multimedia."
+                                    ToolTip="Haz clic para más info"/>
+                            <CheckBox Content="Eliminar Red Throttling" IsChecked="{Binding DisableNetworkThrottling}" Style="{DynamicResource PremiumCheckBoxStyle}"/>
+                        </DockPanel>
                     </StackPanel>
                 </Border>
 
-                <!-- SECCIÓN ENERGÍA -->
-                <Border Style="{StaticResource AnimatedCardStyle}">
+                <!-- Tarjeta: Auto-Boost (Game Booster) -->
+                <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="12" Padding="20" Margin="10">
                     <StackPanel>
-                        <TextBlock Text="Plan de Energía ⚡" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}" Margin="0,0,0,15"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                            <TextBlock Text="⚡" FontSize="18" Margin="0,0,10,0"/>
+                            <TextBlock Text="Auto-Boost (Apps)" FontSize="16" FontWeight="Bold" Foreground="{Binding ProfileThemeBrush}"/>
+                            <Button Style="{StaticResource HelpIconStyle}" 
+                                    Command="{Binding DataContext.ShowHelpCommand, RelativeSource={RelativeSource AncestorType=Grid}}" 
+                                    CommandParameter="Este perfil se activará automáticamente cuando abras cualquiera de estos programas y se restaurará al cerrarlos."
+                                    ToolTip="Haz clic para más info"/>
+                        </StackPanel>
                         
-                        <Grid>
-                            <StackPanel>
-                                <TextBlock Text="Forzar perfil de energía" Foreground="White" FontSize="14"/>
-                                <TextBlock Text="Cambia automáticamente el plan de energía de Windows." Foreground="#666" FontSize="11"/>
-                            </StackPanel>
-                            <ComboBox HorizontalAlignment="Right" Width="180">
-                                <ComboBoxItem Content="Equilibrado" IsSelected="True"/>
-                                <ComboBoxItem Content="Alto Rendimiento"/>
-                                <ComboBoxItem Content="Ahorro de Energía"/>
-                            </ComboBox>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="NewAppTextBox" Height="32" Padding="8,4" VerticalContentAlignment="Center" Opacity="0.5" ToolTip="Escribe el nombre del proceso (ej. Valorant o Chrome)"/>
+                            <Button Grid.Column="1" Content="+" Command="{Binding AddAutoBoostCommand}" CommandParameter="{Binding Text, ElementName=NewAppTextBox}" Width="32" Height="32" Margin="5,0,0,0" Style="{StaticResource PrimaryButtonStyle}"/>
                         </Grid>
+
+                        <ItemsControl ItemsSource="{Binding AutoBoostList}" MaxHeight="100">
+                            <ItemsControl.Template>
+                                <ControlTemplate>
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <ItemsPresenter/>
+                                    </ScrollViewer>
+                                </ControlTemplate>
+                            </ItemsControl.Template>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="#1AFFFFFF" CornerRadius="4" Padding="8,4" Margin="0,0,0,4">
+                                        <Grid>
+                                            <TextBlock Text="{Binding}" Foreground="White" VerticalAlignment="Center"/>
+                                            <Button Content="✕" HorizontalAlignment="Right" Background="Transparent" BorderThickness="0" Foreground="#888" Cursor="Hand"
+                                                    Command="{Binding DataContext.RemoveAutoBoostCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </StackPanel>
                 </Border>
 
-                <!-- BOTONES ACCIÓN -->
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,30,0,20">
-                    <Button Content="Restaurar Valores" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,15,0" Padding="20,10"/>
-                    <Button Content="💾 Guardar Cambios" Style="{StaticResource PrimaryButtonStyle}" Padding="20,10"/>
-                </StackPanel>
-            </StackPanel>
+                <!-- Tarjeta: Plan de Energía -->
+                <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="12" Padding="20" Margin="10">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                            <TextBlock Text="🔋" FontSize="18" Margin="0,0,10,0"/>
+                            <TextBlock Text="Alimentación" FontSize="16" FontWeight="Bold" Foreground="{Binding ProfileThemeBrush}"/>
+                        </StackPanel>
+                        
+                        <TextBlock Text="Plan de Energía Preferido:" Foreground="#888" FontSize="11" Margin="0,0,0,10"/>
+                        <ComboBox SelectedValuePath="Tag" SelectedValue="{Binding EditingConfig.PowerPlanGuid}" Height="40">
+                            <ComboBoxItem Content="Equilibrado (Windows)" Tag="381b4222-f694-41f0-9685-ff5bb260df2e"/>
+                            <ComboBoxItem Content="⭐ WassControl Alto Rendimiento" Tag="8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"/>
+                            <ComboBoxItem Content="Ahorro de Energía" Tag="a1841308-3541-4fab-bc81-f71556f20b4a"/>
+                        </ComboBox>
+                        <TextBlock Text="* Se activará automáticamente al habilitar este modo." Foreground="#666" FontSize="10" Margin="0,10,0,0" FontStyle="Italic"/>
+                    </StackPanel>
+                </Border>
+            </UniformGrid>
         </ScrollViewer>
+
+        <!-- Barra de Estado y Botones -->
+        <Border Grid.Row="3" Background="#111" CornerRadius="12" Padding="15" Margin="0,10,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <Button Grid.Column="0" Content="Restablecer Defaults" Command="{Binding RestoreDefaultsCommand}" Style="{StaticResource SecondaryButtonStyle}" Padding="20,10"/>
+                
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <Button Content="Descartar" Command="{Binding RestoreDefaultsCommand}" Style="{StaticResource NavButtonStyle}" Margin="0,0,10,0" BorderThickness="0" Background="Transparent"/>
+                    <Button Content="GUARDAR CONFIGURACIÓN" Command="{Binding SaveCommand}" 
+                            Background="{Binding ProfileThemeBrush}" Foreground="White" FontWeight="Bold" Padding="35,12">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+                                <Setter Property="BorderThickness" Value="0"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasUnsavedChanges}" Value="False">
+                                        <Setter Property="Opacity" Value="0.4"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+        
+        <!-- Overlay de Carga del Editor -->
+        <Grid Grid.RowSpan="4" Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" Panel.ZIndex="1001">
+            <Border Background="#CC111111" CornerRadius="12">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <Grid Width="50" Height="50" Margin="0,0,0,15">
+                        <Ellipse Stroke="{Binding ProfileThemeBrush}" StrokeThickness="3" StrokeDashArray="3 1.5" RenderTransformOrigin="0.5,0.5">
+                            <Ellipse.RenderTransform>
+                                <RotateTransform x:Name="RotateSpinnerEditor"/>
+                            </Ellipse.RenderTransform>
+                            <Ellipse.Triggers>
+                                <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="RotateSpinnerEditor" Storyboard.TargetProperty="Angle" From="0" To="360" Duration="0:0:1.5" RepeatBehavior="Forever"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </EventTrigger>
+                            </Ellipse.Triggers>
+                        </Ellipse>
+                    </Grid>
+                    <TextBlock Text="{Binding StatusMessage}" Foreground="White" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+        </Grid>
     </Grid>
 </UserControl>

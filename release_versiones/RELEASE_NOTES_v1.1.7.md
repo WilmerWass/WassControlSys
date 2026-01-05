@@ -23,7 +23,8 @@ Hemos añadido descripciones técnicas y advertencias en cada opción del editor
 
 ## 📝 Otros Cambios
 - **Mejoras en Settings**: Ahora puedes elegir que la app recuerde tu último perfil activo al iniciar el equipo.
-- **UI Refinada**: Pequeños ajustes visuales en el Dashboard para integrar mejor la selección de perfiles.
+- **Feedback Visual Mejorado**: Hemos implementado indicadores de carga animados y mensajes de estado claros al aplicar perfiles o guardar configuraciones, para que siempre sepas qué está haciendo la aplicación.
+- **UI Refinada**: Pequeños ajustes visuales en el Dashboard para integrar mejor la selección de perfiles y mejorar la respuesta del usuario.
 
 Gracias por ser parte de la comunidad de WassControlSys. ¡Toma el control y disfruta de la mejor experiencia personalizada!
 

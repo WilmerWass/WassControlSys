@@ -3,12 +3,16 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Runtime.InteropServices;
 using WassControlSys.Models;
 
 namespace WassControlSys.Core
 {
     public class ProcessManagerService : IProcessManagerService
     {
+        [DllImport("psapi.dll")]
+        static extern bool EmptyWorkingSet(IntPtr hProcess);
+
         private readonly ILogService _log;
 
         public ProcessManagerService(ILogService log)
@@ -122,6 +126,27 @@ namespace WassControlSys.Core
                 }
                 _log.Info($"Background reduction applied to {changed} processes");
                 return changed;
+            });
+        }
+
+        public async Task OptimizeRamAsync()
+        {
+            await Task.Run(() =>
+            {
+                int count = 0;
+                foreach (var p in Process.GetProcesses())
+                {
+                    try
+                    {
+                        if (!p.HasExited)
+                        {
+                            EmptyWorkingSet(p.Handle);
+                            count++;
+                        }
+                    }
+                    catch { }
+                }
+                _log.Info($"RAM optimizada: {count} procesos procesados.");
             });
         }
 

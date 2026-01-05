@@ -52,17 +52,18 @@ public partial class MainWindow : Window
         };
 
         // Forzar ventana al frente al cargar
-        this.Loaded += (s, e) =>
+        this.Loaded += async (s, e) =>
         {
             this.WindowState = WindowState.Normal; // Asegurar estado normal
-            _logService.Info($"MainWindow Loaded event - WindowState set to Normal. Current WindowState: {this.WindowState}");
+            _logService.Info($"MainWindow Loaded event - Ensuring visibility.");
+            
             this.Activate();
             this.Focus();
+            
+            // Forzar al frente temporalmente para superar el foco de otras apps al inicio
             this.Topmost = true;
-            System.Threading.Tasks.Task.Delay(100).ContinueWith(_ => 
-            {
-                Dispatcher.Invoke(() => this.Topmost = false);
-            });
+            await System.Threading.Tasks.Task.Delay(150);
+            this.Topmost = false;
         };
     }
 

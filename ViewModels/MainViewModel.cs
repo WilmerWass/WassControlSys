@@ -18,10 +18,21 @@ using System.Security.Principal; // Added for administrator check
 
 namespace WassControlSys.ViewModels
 {
-    public class CpuCoreInfo
+    public class CpuCoreInfo : INotifyPropertyChanged
     {
+        private double _usage;
         public int Index { get; set; }
-        public double Usage { get; set; }
+        public double Usage 
+        { 
+            get => _usage; 
+            set { if (Math.Abs(_usage - value) > 0.1) { _usage = value; OnPropertyChanged(); } } 
+        }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
     }
 
     public class MainViewModel : INotifyPropertyChanged
@@ -47,10 +58,13 @@ namespace WassControlSys.ViewModels
         private readonly IWingetService _wingetService;
         private readonly IDriverService _driverService;
         private readonly IDiskAnalyzerService _diskAnalyzerService;
+        public ProfileEditorViewModel ProfileEditor { get; } // Added
         private CancellationTokenSource? _updateSearchCts;
         private readonly Dictionary<string, CancellationTokenSource> _appUpdateCts = new();
         private DispatcherTimer? _idleTimer;
-        private DateTime _lastInputTime;
+        private readonly DispatcherTimer _autoBoostTimer;
+        private PerformanceMode _lastManualMode = PerformanceMode.General;
+        private bool _isAutoActivated = false;
 
         // Constructor del ViewModel principal
         public MainViewModel(ISystemMaintenanceService maintenance, IMonitoringService monitoringService, IPerformanceProfileService profiles, ISettingsService settings, ILogService log, ISystemInfoService systemInfoService, ISecurityService securityService, IDialogService dialogService, IStartupService startupService, IServiceOptimizerService serviceOptimizerService, IBloatwareService bloatwareService, IPrivacyService privacyService, IProcessManagerService processManagerService, ITemperatureMonitorService temperatureMonitorService, IDiskHealthService diskHealthService, ILocalizationService localizationService, IRestorePointService restorePointService, IBatteryService batteryService, IWingetService wingetService, IDriverService driverService, IDiskAnalyzerService diskAnalyzerService)
@@ -77,6 +91,9 @@ namespace WassControlSys.ViewModels
             _wingetService = wingetService;
             _driverService = driverService;
             _diskAnalyzerService = diskAnalyzerService;
+            
+            // Inicializar sub-ViewModel
+            ProfileEditor = new ProfileEditorViewModel(settings, log, dialogService);
             
             // Inicializar Comandos
             CleanTempFilesCommand = new RelayCommand(async _ => await ExecuteCleanTempFilesAsync()); 
@@ -199,6 +216,12 @@ namespace WassControlSys.ViewModels
             LoadDiskAnalyzers();
             
             SetupIdleMaintenance();
+
+            // Timer para Auto-Boost (cada 10 seg está bien para no saturar)
+            _autoBoostTimer = new DispatcherTimer();
+            _autoBoostTimer.Interval = TimeSpan.FromSeconds(10);
+            _autoBoostTimer.Tick += async (s, e) => await CheckAutoBoostAsync();
+            _autoBoostTimer.Start();
         }
 
         private void SetupIdleMaintenance()
@@ -229,6 +252,51 @@ namespace WassControlSys.ViewModels
         }
 
         private DateTime _lastAutoMaintenance = DateTime.MinValue;
+
+        private async Task CheckAutoBoostAsync()
+        {
+            var settings = await _settings.LoadAsync();
+            if (!settings.EnableAutoBoost) return;
+
+            // Buscamos si algún proceso configurado en algún perfil está corriendo
+            foreach (var profilePair in settings.PerformanceProfiles)
+            {
+                var config = profilePair.Value;
+                if (config.AutoBoostProcesses == null || config.AutoBoostProcesses.Count == 0) continue;
+
+                bool processFound = false;
+                foreach (var procName in config.AutoBoostProcesses)
+                {
+                    // Comprobamos si el proceso existe (sin .exe si el usuario se lo puso)
+                    string searchName = procName.Replace(".exe", "", StringComparison.OrdinalIgnoreCase);
+                    if (Process.GetProcessesByName(searchName).Length > 0)
+                    {
+                        processFound = true;
+                        break;
+                    }
+                }
+
+                if (processFound)
+                {
+                    if (CurrentMode != config.Mode)
+                    {
+                        _log?.Info($"Auto-Boost: Detectado proceso de {profilePair.Key}. Activando perfil.");
+                        if (!_isAutoActivated) _lastManualMode = CurrentMode;
+                        _isAutoActivated = true;
+                        await ExecuteApplyModeAsync(config.Mode);
+                    }
+                    return; // Ya activamos uno, salimos
+                }
+            }
+
+            // Si llegamos aquí y estábamos en modo Auto-Activado, pero ya no hay procesos, restauramos
+            if (_isAutoActivated)
+            {
+                _log?.Info("Auto-Boost: Ya no se detectan procesos objetivos. Restaurando modo manual.");
+                _isAutoActivated = false;
+                await ExecuteApplyModeAsync(_lastManualMode);
+            }
+        }
 
         private async Task ExecuteSilentMaintenanceAsync()
         {
@@ -261,6 +329,18 @@ namespace WassControlSys.ViewModels
                 _log?.Error("Error loading disk analyzers", ex);
             }
             DiskAnalyzers = analyzers;
+        }
+
+        public async Task PrepareForShutdownAsync()
+        {
+            _log?.Info("Preparando para el apagado de la aplicación...");
+            StopAllTasks();
+            
+            if (CurrentMode != PerformanceMode.General)
+            {
+                _log?.Info("Restaurando estado del sistema antes de salir...");
+                await _profiles.RestoreOriginalStateAsync();
+            }
         }
 
         public void StopAllTasks()
@@ -553,6 +633,8 @@ namespace WassControlSys.ViewModels
 
         private ObservableCollection<WindowsService> _allWindowsServices = new();
 
+        private DispatcherTimer? _searchFilterTimer;
+
         private string _serviceSearchText = string.Empty;
         public string ServiceSearchText
         {
@@ -563,9 +645,17 @@ namespace WassControlSys.ViewModels
                 {
                     _serviceSearchText = value;
                     OnPropertyChanged();
-                    FilterServices();
+                    DebounceFilter(FilterServices);
                 }
             }
+        }
+
+        private void DebounceFilter(Action filterAction)
+        {
+            _searchFilterTimer?.Stop();
+            _searchFilterTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+            _searchFilterTimer.Tick += (s, e) => { _searchFilterTimer.Stop(); filterAction(); };
+            _searchFilterTimer.Start();
         }
 
         private void FilterServices()
@@ -676,7 +766,7 @@ namespace WassControlSys.ViewModels
                 {
                     _processSearchText = value;
                     OnPropertyChanged();
-                    FilterProcesses();
+                    DebounceFilter(FilterProcesses);
                 }
             }
         }
@@ -804,6 +894,8 @@ namespace WassControlSys.ViewModels
 
         private async Task UpdateThermalAsync()
         {
+            if (!IsWindowVisible) return; // Ahorrar recursos si no se ve la app
+
             try
             {
                 var temp = await _temperatureMonitorService.GetCpuTemperatureCAsync();
@@ -1340,7 +1432,7 @@ namespace WassControlSys.ViewModels
 
         public ICommand NavigateCommand { get; private set; }
 
-        private void ExecuteNavigate(object? parameter)
+        private async void ExecuteNavigate(object? parameter)
         {
             if (parameter == null) return;
             AppSection target;
@@ -1348,48 +1440,46 @@ namespace WassControlSys.ViewModels
             else if (parameter is string s && Enum.TryParse(s, true, out AppSection parsed)) target = parsed;
             else return;
 
+            if (CurrentSection == target) return;
             CurrentSection = target;
 
-            // Carga bajo demanda al navegar
-            switch (target)
+            // Carga inteligente: secuencial para evitar saturar el UI thread
+            try
             {
-                case AppSection.Dashboard:
-                    _ = LoadSecurityStatusAsync();
-                    _ = LoadStartupItemsAsync();
-                    _ = LoadBatteryInfoAsync();
-                    break;
-                case AppSection.Proteccion:
-                    _ = LoadSecurityStatusAsync();
-                    break;
-                case AppSection.Almacenamiento:
-                    // Carga info de discos si es necesario
-                    break;
-                case AppSection.Rendimiento:
-                    if (Processes == null || Processes.Count == 0) _ = LoadProcessesAsync();
-                    _ = UpdateThermalAsync();
-                    if (WindowsServices == null || WindowsServices.Count == 0) _ = LoadWindowsServicesAsync();
-                    break;
-                case AppSection.Aplicaciones:
-                    if (BloatwareApps == null || BloatwareApps.Count == 0) _ = LoadBloatwareAppsAsync();
-                    _ = LoadUpdatableAppsAsync();
-                    if (StartupItems == null || StartupItems.Count == 0) _ = LoadStartupItemsAsync();
-                    break;
-                case AppSection.Herramientas:
-                    _ = LoadLastRestorePointAsync();
-                    break;
-                case AppSection.Hardware:
-                    if (string.IsNullOrWhiteSpace(SystemInformation?.MachineName)) _ = LoadSystemInfoAsync();
-                    if (DiskHealth == null || DiskHealth.Count == 0) _ = LoadDiskHealthAsync();
-                    if (PrivacySettings == null || PrivacySettings.Count == 0) _ = LoadPrivacySettingsAsync();
-                    if (string.IsNullOrWhiteSpace(SecurityStatus?.AntivirusName)) _ = LoadSecurityStatusAsync();
-                    if (DriversWithProblems == null || DriversWithProblems.Count == 0) _ = LoadDriversWithProblemsAsync();
-                    break;
-                case AppSection.Configuracion:
-                    // Seccion de ajustes, no requiere carga inicial especial
-                    break;
-                case AppSection.EditorPerfiles:
-                    // Carga info para el editor si es necesario
-                    break;
+                switch (target)
+                {
+                    case AppSection.Dashboard:
+                        await LoadSecurityStatusAsync();
+                        await LoadStartupItemsAsync();
+                        await LoadBatteryInfoAsync();
+                        break;
+                    case AppSection.Proteccion:
+                        await LoadSecurityStatusAsync();
+                        break;
+                    case AppSection.Rendimiento:
+                        // No cargar todo a la vez para mantener fluidez
+                        if (Processes == null || Processes.Count == 0) await LoadProcessesAsync();
+                        _ = UpdateThermalAsync(); // Este puede ir en paralelo
+                        if (WindowsServices == null || WindowsServices.Count == 0) await LoadWindowsServicesAsync();
+                        break;
+                    case AppSection.Aplicaciones:
+                        if (BloatwareApps == null || BloatwareApps.Count == 0) await LoadBloatwareAppsAsync();
+                        await LoadUpdatableAppsAsync();
+                        if (StartupItems == null || StartupItems.Count == 0) await LoadStartupItemsAsync();
+                        break;
+                    case AppSection.Herramientas:
+                        await LoadLastRestorePointAsync();
+                        break;
+                    case AppSection.Hardware:
+                        if (string.IsNullOrWhiteSpace(SystemInformation?.MachineName)) await LoadSystemInfoAsync();
+                        if (DiskHealth == null || DiskHealth.Count == 0) await LoadDiskHealthAsync();
+                        if (string.IsNullOrWhiteSpace(SecurityStatus?.AntivirusName)) await LoadSecurityStatusAsync();
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                _log?.Warn($"Error durante la navegación: {ex.Message}");
             }
         }
         
@@ -1502,9 +1592,11 @@ namespace WassControlSys.ViewModels
             finally { IsBusy = false; }
         }
 
-        private void UpdateSystemUsage()
+        private async void UpdateSystemUsage()
         {
-            var usage = _monitoringService.GetSystemUsage();
+            if (!IsWindowVisible) return; // No monitorizar si la ventana está oculta
+
+            var usage = await _monitoringService.GetSystemUsageAsync();
             CpuUsage = usage.CpuUsage;
             RamUsage = usage.RamUsage;
             DiskUsage = usage.DiskUsage;
@@ -1525,12 +1617,8 @@ namespace WassControlSys.ViewModels
                 {
                     for (int i = 0; i < usage.CpuPerCore.Length; i++)
                     {
-                        if (Math.Abs(CpuPerCore[i].Usage - usage.CpuPerCore[i]) > 0.1)
-                        {
-                            // Reemplazar el objeto para notificar cambio, ya que CpuCoreInfo no implementa INPC
-                            // Esto es más seguro que modificar la propiedad sin notificación
-                            CpuPerCore[i] = new CpuCoreInfo { Index = i, Usage = usage.CpuPerCore[i] };
-                        }
+                        // Actualizar propiedad directamente sin recrear el objeto
+                        CpuPerCore[i].Usage = usage.CpuPerCore[i];
                     }
                 }
             }
@@ -1650,10 +1738,25 @@ namespace WassControlSys.ViewModels
             try
             {
                 IsBusy = true;
+                StatusMessage = $"Estableciendo Modo {mode}...";
                 _log?.Info($"Aplicando perfil: {mode}");
+                
+                // Pequeña pausa para que la animación sea visible
+                await Task.Delay(400); 
+                
                 var r = await _profiles.ApplyProfileAsync(mode);
+                
                 _log?.Info($"Perfil resultado: {r.Success} - {r.Message}");
-                await _dialogService.ShowMessage(r.Message ?? (r.Success ? "Perfil aplicado." : "No se pudo aplicar el perfil."), "Selector de Modo");
+                
+                if (r.Success)
+                {
+                    StatusMessage = "¡Optimización Aplicada!";
+                    await Task.Delay(1000);
+                }
+                else
+                {
+                    await _dialogService.ShowMessage(r.Message ?? "No se pudo aplicar el perfil.", "Aviso");
+                }
             }
             catch (System.Exception ex)
             {
@@ -1663,6 +1766,7 @@ namespace WassControlSys.ViewModels
             finally
             {
                 IsBusy = false;
+                StatusMessage = "";
             }
         }
 

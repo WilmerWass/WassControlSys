@@ -24,7 +24,7 @@ namespace WassControlSys
         static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
         private const int SW_RESTORE = 9; // Restores a minimized window.
-        private readonly ServiceProvider _serviceProvider;
+        private readonly ServiceProvider? _serviceProvider;
         private NotifyIcon? _notifyIcon;
         private System.Threading.Mutex? _instanceMutex;
         public bool IsShuttingDown { get; private set; }
@@ -37,8 +37,12 @@ namespace WassControlSys
             
             if (!createdNew)
             {
-                // Ya existe una instancia, mostrar mensaje y cerrar
-                MessageBox.Show("WassControlSys ya está en ejecución.", "Instancia Activa", MessageBoxButton.OK, MessageBoxImage.Information);
+                // Intentar activar la instancia existente antes de cerrar
+                ActivateExistingInstance();
+                
+                // Mostrar un mensaje breve opcional o simplemente salir si logramos activar la otra
+                // MessageBox.Show("WassControlSys ya está en ejecución.", "Instancia Activa", MessageBoxButton.OK, MessageBoxImage.Information);
+                
                 Current.Shutdown();
                 return;
             }
@@ -47,6 +51,27 @@ namespace WassControlSys
             var serviceCollection = new ServiceCollection();
             ConfigureServices(serviceCollection);
             _serviceProvider = serviceCollection.BuildServiceProvider();
+        }
+
+        private void ActivateExistingInstance()
+        {
+            try
+            {
+                var current = System.Diagnostics.Process.GetCurrentProcess();
+                var previous = System.Diagnostics.Process.GetProcessesByName(current.ProcessName)
+                    .FirstOrDefault(p => p.Id != current.Id);
+
+                if (previous != null)
+                {
+                    IntPtr handle = previous.MainWindowHandle;
+                    if (handle != IntPtr.Zero)
+                    {
+                        ShowWindow(handle, SW_RESTORE);
+                        SetForegroundWindow(handle);
+                    }
+                }
+            }
+            catch { }
         }
 
         private void App_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
@@ -95,36 +120,58 @@ namespace WassControlSys
         {
             base.OnStartup(e);
 
-            var settings = _serviceProvider.GetService<ISettingsService>();
-            var loc = _serviceProvider.GetService<ILocalizationService>();
-            var log = _serviceProvider.GetService<ILogService>();
+            var settings = _serviceProvider!.GetService<ISettingsService>();
+            var loc = _serviceProvider!.GetService<ILocalizationService>();
+            var log = _serviceProvider!.GetService<ILogService>();
             
+            log?.Info("App starting - Stage: Initialization beginning");
+
             try
             {
                 if (settings != null)
                 {
+                    log?.Info("App starting - Loading settings...");
                     var s = await settings.LoadAsync();
                     if (s != null && loc != null)
                     {
+                        log?.Info($"App starting - Setting language: {s.Language}");
                         await loc.SetLanguageAsync(s.Language);
+                        log?.Info($"App starting - Applying theme and accent color: {s.AccentColor}");
                         ChangeAccentColor(s.AccentColor);
                         ChangeTheme(s.IsDarkMode);
                     }
                 }
                 ValidateContrast(log);
             }
-            catch { }
+            catch (Exception ex)
+            {
+                log?.Error("Error during specific startup initialization", ex);
+            }
 
-            var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
-            mainWindow.DataContext = _serviceProvider.GetRequiredService<MainViewModel>();
-            this.MainWindow = mainWindow; // Asignar a la propiedad MainWindow de la aplicación
+            try
+            {
+                log?.Info("App starting - Creating MainWindow...");
+                var mainWindow = _serviceProvider!.GetRequiredService<MainWindow>();
+                mainWindow.DataContext = _serviceProvider!.GetRequiredService<MainViewModel>();
+                this.MainWindow = mainWindow;
 
-            SetupTrayIcon();
-            
-            // Simplemente muestra la ventana. La propia MainWindow se encargará de la activación en su evento Loaded.
-            mainWindow.Show();
-            log?.Info($"App.OnStartup - mainWindow.Show() called. Activation is now handled by MainWindow.Loaded event.");
-
+                log?.Info("App starting - Setting up Tray Icon...");
+                SetupTrayIcon();
+                
+                log?.Info("App starting - Showing MainWindow...");
+                mainWindow.Show();
+                
+                // Asegurar que esté al frente
+                ShowMainWindow();
+                
+                log?.Info("App starting - Startup sequence completed successfully.");
+            }
+            catch (Exception ex)
+            {
+                log?.Error("CRITICAL ERROR during MainWindow startup", ex);
+                System.Windows.MessageBox.Show($"Error crítico al iniciar la ventana principal:\n{ex.Message}", "Error de Inicio", MessageBoxButton.OK, MessageBoxImage.Error);
+                Shutdown();
+            }
         }
 
         private void SetupTrayIcon()
@@ -203,16 +250,27 @@ namespace WassControlSys
             }
         }
 
-        private void ShutdownApp()
+        private async void ShutdownApp()
         {
             IsShuttingDown = true;
-            (MainWindow?.DataContext as MainViewModel)?.StopAllTasks();
+            if (MainWindow?.DataContext is MainViewModel vm)
+            {
+                await vm.PrepareForShutdownAsync();
+            }
             _notifyIcon?.Dispose();
             Shutdown();
         }
 
         protected override void OnExit(ExitEventArgs e)
         {
+            // Intento final de restauración rápida si no se hizo por ShutdownApp
+            if (!IsShuttingDown && MainWindow?.DataContext is MainViewModel vm)
+            {
+                // No podemos usar await aquí de forma sencilla sin bloquear el hilo, 
+                // pero si IsShuttingDown es falso, es que se cerró de otra forma (ej. Alt+F4 sin tray)
+                Task.Run(async () => await vm.PrepareForShutdownAsync()).Wait(3000);
+            }
+
             _notifyIcon?.Dispose();
             _instanceMutex?.ReleaseMutex();
             _instanceMutex?.Dispose();
